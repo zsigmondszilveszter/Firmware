@@ -126,6 +126,7 @@ execute_process(
 
 px4_add_git_submodule(TARGET git_ecl PATH "src/lib/ecl")
 px4_add_git_submodule(TARGET git_matrix PATH "src/lib/matrix")
+px4_add_git_submodule(TARGET git_eigen PATH "src/lib/eigen")
 
 define_property(GLOBAL PROPERTY PX4_LIBRARIES
                  BRIEF_DOCS "PX4 libs"

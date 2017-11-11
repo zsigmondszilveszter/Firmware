@@ -37,6 +37,7 @@ set(srcs
 	test_bson.c
 	test_conv.cpp
 	test_dataman.c
+	test_eigen.cpp
 	test_file.c
 	test_file2.c
 	test_float.cpp
@@ -86,6 +87,7 @@ px4_add_module(
 		-Wno-missing-declarations
 		-Wno-double-promotion
 		-Wno-unknown-warning-option
+		-Wno-int-in-bool-context
 	SRCS ${srcs}
 	DEPENDS
 		platforms__common

@@ -13,6 +13,7 @@ exec find src platforms \
     -path platforms/nuttx/nuttx-configs -prune -o \
     -path src/lib/DriverFramework -prune -o \
     -path src/lib/ecl -prune -o \
+    -path src/lib/eigen -prune -o \
     -path src/lib/matrix -prune -o \
     -path src/modules/commander -prune -o \
     -path src/modules/micrortps_bridge/micro-CDR -prune -o \
