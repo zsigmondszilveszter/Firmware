@@ -1052,7 +1052,7 @@ bool
 Navigator::force_vtol()
 {
 	return _vstatus.is_vtol &&
-	       (!_vstatus.is_rotary_wing || _vstatus.in_transition_to_fw)
+	       (!_vstatus.is_rotary_wing)//|| _vstatus.in_transition_to_fw)
 	       && _param_force_vtol.get();
 }
 
