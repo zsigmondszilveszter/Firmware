@@ -63,6 +63,8 @@ FixedwingPositionControl::FixedwingPositionControl() :
 	_parameter_handles.man_pitch_max_deg = param_find("FW_MAN_P_MAX");
 	_parameter_handles.rollsp_offset_deg = param_find("FW_RSP_OFF");
 	_parameter_handles.pitchsp_offset_deg = param_find("FW_PSP_OFF");
+	_parameter_handles.pitch_output_target = param_find("FW_PO_TARGET");
+	_parameter_handles.pitch_output_target_integrator = param_find("FW_PO_I");
 
 	_parameter_handles.land_slope_angle = param_find("FW_LND_ANG");
 	_parameter_handles.land_H1_virt = param_find("FW_LND_HVIRT");
@@ -136,6 +138,8 @@ FixedwingPositionControl::parameters_update()
 	_parameters.rollsp_offset_rad = radians(_parameters.rollsp_offset_rad);
 	param_get(_parameter_handles.pitchsp_offset_deg, &_parameters.pitchsp_offset_rad);
 	_parameters.pitchsp_offset_rad = radians(_parameters.pitchsp_offset_rad);
+	param_get(_parameter_handles.pitch_output_target, &_parameters.pitch_output_target);
+	param_get(_parameter_handles.pitch_output_target_integrator, &_parameters.pitch_output_target_integrator);
 
 	param_get(_parameter_handles.time_const, &(_parameters.time_const));
 	param_get(_parameter_handles.time_const_throt, &(_parameters.time_const_throt));

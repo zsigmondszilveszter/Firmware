@@ -679,3 +679,31 @@ PARAM_DEFINE_FLOAT(FW_T_HRATE_FF, 0.8f);
  * @group FW TECS
  */
 PARAM_DEFINE_FLOAT(FW_T_SRATE_P, 0.02f);
+
+/**
+ * Pitch Output Target
+ *
+ * Target pitch output (actuation) when flying level on airspeedsensorless
+ * vehicles. Throttle will be used to achieve the desired pitch output.
+ * A value of 0 disables this function.
+ *
+ * @min 0.0
+ * @max 1.0
+ * @decimal 2
+ * @increment 0.01
+ * @group FW L1 Control
+ */
+PARAM_DEFINE_FLOAT(FW_PO_TARGET, 0.0f);
+
+/**
+ * Pitch Output Target Integrator
+ *
+ * Integrator for FW_PO_TARGET
+ *
+ * @min 0.0
+ * @max 1.0
+ * @decimal 2
+ * @increment 0.01
+ * @group FW L1 Control
+ */
+PARAM_DEFINE_FLOAT(FW_PO_I, 0.0f);

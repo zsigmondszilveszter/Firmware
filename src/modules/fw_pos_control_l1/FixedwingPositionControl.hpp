@@ -306,6 +306,8 @@ private:
 		float man_pitch_max_rad;
 		float rollsp_offset_rad;
 		float pitchsp_offset_rad;
+		float pitch_output_target;
+		float pitch_output_target_integrator;
 
 		float throttle_land_max;
 
@@ -365,6 +367,8 @@ private:
 		param_t man_pitch_max_deg;
 		param_t rollsp_offset_deg;
 		param_t pitchsp_offset_deg;
+		param_t pitch_output_target;
+		param_t pitch_output_target_integrator;
 
 		param_t throttle_land_max;
 
