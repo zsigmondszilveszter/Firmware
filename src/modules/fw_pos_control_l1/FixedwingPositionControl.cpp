@@ -788,7 +788,7 @@ FixedwingPositionControl::control_position(const math::Vector<2> &curr_pos, cons
 						   radians(_parameters.pitch_limit_max) - _parameters.pitchsp_offset_rad,
 						   _parameters.throttle_min,
 						   _parameters.throttle_max,
-						   _parameters.throttle_cruise,
+						   mission_throttle,
 						   false,
 						   radians(_parameters.pitch_limit_min));
 
