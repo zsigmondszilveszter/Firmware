@@ -370,6 +370,18 @@ FixedwingPositionControl::position_setpoint_triplet_poll()
 	}
 }
 
+void
+FixedwingPositionControl::actuator_controls1_poll()
+{
+	bool updated;
+	orb_check(_actuator1_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(actuator_controls_1), _actuator1_sub, &_controls1);
+	}
+
+}
+
 float
 FixedwingPositionControl::get_demanded_airspeed()
 {
@@ -1369,7 +1381,7 @@ FixedwingPositionControl::control_position(const math::Vector<2> &curr_pos, cons
 		   pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF &&
 		   _runway_takeoff.runwayTakeoffEnabled()) {
 
-		_att_sp.thrust = _runway_takeoff.getThrottle(min(get_tecs_thrust(), throttle_max));
+		_att_sp.thrust = _runway_takeoff.getThrottle(min(get_tecs_thrust(dt), throttle_max));
 
 	} else if (_control_mode_current == FW_POSCTRL_MODE_AUTO &&
 		   pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
@@ -1386,7 +1398,7 @@ FixedwingPositionControl::control_position(const math::Vector<2> &curr_pos, cons
 			_att_sp.thrust = min(_parameters.throttle_idle, throttle_max);
 
 		} else {
-			_att_sp.thrust = min(get_tecs_thrust(), throttle_max);
+			_att_sp.thrust = min(get_tecs_thrust(dt), throttle_max);
 		}
 	}
 
@@ -1431,10 +1443,32 @@ FixedwingPositionControl::get_tecs_pitch()
 }
 
 float
-FixedwingPositionControl::get_tecs_thrust()
+FixedwingPositionControl::get_tecs_thrust(float dt)
 {
+
+	static float throttle_int = 0.0f;	// integrator state that will be added to TECS throttle
+	const float level_height_rate_threshold = 0.5f;	// height rate threshold used for calculating if flying level
+	static bool flying_level = false;
 	if (_is_tecs_running) {
-		return _tecs.get_throttle_setpoint();
+
+		// crude logic which determins if the vehicle is flying level or not (with hysteresis)
+		if (fabsf(_tecs.hgt_rate_setpoint()) < level_height_rate_threshold && fabsf(_local_pos.vz) < level_height_rate_threshold) {
+			flying_level = true;
+		} else if (fabsf(_tecs.hgt_rate_setpoint()) > 5.0f * level_height_rate_threshold || fabsf(_local_pos.vz) > 2.0f * level_height_rate_threshold) {
+			flying_level = false;
+		}
+
+		// if we believe to fly level use an integral controller to bring the pitch control to the desired value using throttle as input
+		// idea: pitch control is an indirect indication of the angle of attack we are flying at. Higher angles of attack require more pitch up moment. Increasing throttle
+		// increases airspeed and thus reduces the required angle of attack.
+		if (flying_level) {
+			throttle_int -= _parameters.pitch_output_target_integrator * (_parameters.pitch_output_target - _controls1.control[actuator_controls_s::INDEX_PITCH]) * dt;
+		}
+
+		// only allow positive throttle corrections
+		throttle_int = math::constrain(throttle_int, 0.0f, 0.2f);
+
+		return _tecs.get_throttle_setpoint() + throttle_int;
 	}
 
 	// return 0 to prevent stale tecs state when it's not running
@@ -1473,6 +1507,7 @@ FixedwingPositionControl::run()
 	_params_sub = orb_subscribe(ORB_ID(parameter_update));
 	_manual_control_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
 	_sensor_baro_sub = orb_subscribe(ORB_ID(sensor_baro));
+	_actuator1_sub = orb_subscribe(ORB_ID(actuator_controls_1));
 
 	/* rate limit control mode updates to 5Hz */
 	orb_set_interval(_control_mode_sub, 200);
@@ -1569,6 +1604,7 @@ FixedwingPositionControl::run()
 			vehicle_control_mode_poll();
 			vehicle_land_detected_poll();
 			vehicle_status_poll();
+			actuator_controls1_poll();
 
 			math::Vector<2> curr_pos((float)_global_pos.lat, (float)_global_pos.lon);
 			math::Vector<2> ground_speed(_global_pos.vel_n, _global_pos.vel_e);

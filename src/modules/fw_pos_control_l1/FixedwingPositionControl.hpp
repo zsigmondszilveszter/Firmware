@@ -84,6 +84,7 @@
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/actuator_controls.h>
 #include <uORB/uORB.h>
 #include <vtol_att_control/vtol_type.h>
 
@@ -162,6 +163,7 @@ private:
 	int		_params_sub{-1};			///< notification of parameter updates */
 	int		_manual_control_sub{-1};		///< notification of manual control updates */
 	int		_sensor_baro_sub{-1};
+	int 	_actuator1_sub{-1};
 
 	orb_advert_t	_attitude_sp_pub{nullptr};		///< attitude setpoint */
 	orb_advert_t	_tecs_status_pub{nullptr};		///< TECS status publication */
@@ -180,6 +182,7 @@ private:
 	vehicle_local_position_s	_local_pos {};			///< vehicle local position */
 	vehicle_land_detected_s		_vehicle_land_detected {};	///< vehicle land detected */
 	vehicle_status_s		_vehicle_status {};		///< vehicle status */
+	actuator_controls_s 	_controls1 {};
 
 	Subscription<airspeed_s> _sub_airspeed;
 	Subscription<sensor_bias_s> _sub_sensors;
@@ -401,6 +404,7 @@ private:
 	void		vehicle_control_mode_poll();
 	void		vehicle_land_detected_poll();
 	void		vehicle_status_poll();
+	void 		actuator_controls1_poll();
 
 	// publish navigation capabilities
 	void		fw_pos_ctrl_status_publish();
@@ -445,7 +449,7 @@ private:
 					 const position_setpoint_s &pos_sp_prev, const position_setpoint_s &pos_sp_curr);
 
 	float		get_tecs_pitch();
-	float		get_tecs_thrust();
+	float		get_tecs_thrust(float dt);
 
 	float		get_demanded_airspeed();
 	float		calculate_target_airspeed(float airspeed_demand);
