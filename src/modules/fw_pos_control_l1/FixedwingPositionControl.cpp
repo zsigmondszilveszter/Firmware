@@ -1911,8 +1911,8 @@ FixedwingPositionControl::tecs_update_pitch_throttle(float alt_sp, float airspee
 	t.airspeedSp			= _tecs.TAS_setpoint_adj();
 	t.airspeed_filtered 	= _tecs.tas_state();
 
-	t.flightPathAngleSp		= _tecs.hgt_rate_setpoint();
-	t.flightPathAngle		= _tecs.vert_vel_state();
+	t.climbRateSetpoint = _tecs.hgt_rate_setpoint();
+	t.climbRate = _tecs.vert_vel_state();
 
 	t.airspeedDerivativeSp	= _tecs.TAS_rate_setpoint();
 	t.airspeedDerivative	= _tecs.speed_derivative();

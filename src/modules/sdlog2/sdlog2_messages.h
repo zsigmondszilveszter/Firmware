@@ -363,8 +363,8 @@ struct log_GS1B_s {
 struct log_TECS_s {
 	float altitudeSp;
 	float altitudeFiltered;
-	float flightPathAngleSp;
-	float flightPathAngle;
+	float climbRateSetpoint;
+	float climbRate;
 	float airspeedSp;
 	float airspeedFiltered;
 	float airspeedDerivativeSp;
