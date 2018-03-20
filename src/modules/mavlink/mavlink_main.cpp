@@ -2029,6 +2029,7 @@ Mavlink::task_main(int argc, char *argv[])
 		configure_stream("RC_CHANNELS", 5.0f);
 		configure_stream("SERVO_OUTPUT_RAW_0", 1.0f);
 		configure_stream("SYS_STATUS", 1.0f);
+		configure_stream("TRAJECTORY", 5.0f);
 		configure_stream("VFR_HUD", 4.0f);
 		configure_stream("VISION_POSITION_ESTIMATE", 1.0f);
 		configure_stream("WIND_COV", 1.0f);
@@ -2067,6 +2068,7 @@ Mavlink::task_main(int argc, char *argv[])
 		configure_stream("SYS_STATUS", 5.0f);
 		configure_stream("SYSTEM_TIME", 1.0f);
 		configure_stream("TIMESYNC", 10.0f);
+		configure_stream("TRAJECTORY", 5.0f);
 		configure_stream("VFR_HUD", 10.0f);
 		configure_stream("VISION_POSITION_ESTIMATE", 10.0f);
 		configure_stream("WIND_COV", 10.0f);
