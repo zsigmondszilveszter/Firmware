@@ -422,7 +422,7 @@ private:
 
 	bool use_obstacle_avoidance();
 
-	bool use_pos_wp_avoidance();
+	bool use_avoidance_position_waypoint();
 
 	bool use_avoidance_velocity_waypoint();
 
@@ -2446,7 +2446,7 @@ MulticopterPositionControl::control_position()
 void
 MulticopterPositionControl::calculate_velocity_setpoint()
 {
-	if (use_pos_wp_avoidance()) {
+	if (use_avoidance_position_waypoint()) {
 		execute_avoidance_position_waypoint();
 	}
 
@@ -3508,7 +3508,7 @@ MulticopterPositionControl::use_obstacle_avoidance()
 }
 
 bool
-MulticopterPositionControl::use_pos_wp_avoidance()
+MulticopterPositionControl::use_avoidance_position_waypoint()
 {
 	return use_obstacle_avoidance() && PX4_ISFINITE(_traj_wp_avoidance.point_0[trajectory_waypoint_s::X]) &&
 	       PX4_ISFINITE(_traj_wp_avoidance.point_0[trajectory_waypoint_s::Y])
@@ -3586,7 +3586,7 @@ void MulticopterPositionControl::update_avoidance_waypoints_desired(const int po
 }
 
 void
-MulticopterPositionControl::reset_wp_avoidance_desired()
+MulticopterPositionControl::reset_avoidance_waypoint_desired()
 {
 	const int point_size = 11;
 
