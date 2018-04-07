@@ -56,6 +56,7 @@ pipeline {
                     sh "make sizes"
                     sh "ccache -s"
                     archiveArtifacts(allowEmptyArchive: true, artifacts: 'build/**/*.px4, build/**/*.elf', fingerprint: true, onlyIfSuccessful: true)
+                    stash includes: 'build/nuttx_px4fmu-v2_test/*.elf', name: 'px4fmu-v2_test'
                     sh "make distclean"
                   }
                 }
@@ -407,6 +408,19 @@ pipeline {
             }
           }
         }
+
+        stage('HIL px4fmu-v2') {
+          agent { label 'px4fmu-v2' }
+          steps {
+            sh 'export'
+            unstash(px4fmu-v2_test)
+            sh('uhubctl --vendor "2109:2811" -p 12 -a off')
+            sh('sleep 2')
+            sh('uhubctl --vendor "2109:2811" -p 12 -a on')
+            sh('upload.sh nuttx_px4fmu-v2_test.elf')
+            // run under gdb?
+          }
+        } // px4fmu-v2
 
       }
     }
