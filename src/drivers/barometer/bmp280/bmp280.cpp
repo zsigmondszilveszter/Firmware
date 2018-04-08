@@ -38,37 +38,18 @@
 
 #include <px4_config.h>
 
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <semaphore.h>
-#include <string.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <errno.h>
-#include <stdio.h>
-#include <math.h>
-#include <unistd.h>
-#include <getopt.h>
-#include <px4_log.h>
-
-#include <nuttx/arch.h>
-#include <nuttx/wqueue.h>
-#include <nuttx/clock.h>
-
-#include <arch/board/board.h>
-#include <board_config.h>
 #include "bmp280.h"
+
+#include <string.h>
 
 #include <drivers/device/device.h>
 #include <drivers/drv_baro.h>
 #include <drivers/drv_hrt.h>
 #include <drivers/device/ringbuffer.h>
+#include <px4_workqueue.h>
 
 #include <systemlib/perf_counter.h>
 #include <systemlib/err.h>
-
 
 enum BMP280_BUS {
 	BMP280_BUS_ALL = 0,
@@ -94,8 +75,8 @@ public:
 
 	virtual int		init();
 
-	virtual ssize_t	read(struct file *filp, char *buffer, size_t buflen);
-	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
+	virtual ssize_t	read(device::file_t *filp, char *buffer, size_t buflen);
+	virtual int		ioctl(device::file_t *filp, int cmd, unsigned long arg);
 
 	/**
 	 * Diagnostics - print some basic information about the driver.
@@ -109,7 +90,7 @@ private:
 
 	uint8_t				_curr_ctrl;
 
-	struct work_s		_work;
+	struct work_s		_work {};
 	unsigned			_report_ticks; // 0 - no cycling, otherwise period of sending a report
 	unsigned			_max_mesure_ticks; //ticks needed to measure
 
@@ -165,8 +146,6 @@ BMP280::BMP280(bmp280::IBMP280 *interface, const char *path) :
 	_measure_perf(perf_alloc(PC_ELAPSED, "bmp280_measure")),
 	_comms_errors(perf_alloc(PC_COUNT, "bmp280_comms_errors"))
 {
-	// work_cancel in stop_cycle called from the dtor will explode if we don't do this...
-	memset(&_work, 0, sizeof(_work));
 }
 
 BMP280::~BMP280()
@@ -262,7 +241,7 @@ BMP280::init()
 		return -EIO;
 	}
 
-	usleep(TICK2USEC(_max_mesure_ticks));
+	usleep(USEC_PER_TICK * _max_mesure_ticks);
 
 	if (collect()) {
 		return -EIO;
@@ -283,7 +262,7 @@ BMP280::init()
 }
 
 ssize_t
-BMP280::read(struct file *filp, char *buffer, size_t buflen)
+BMP280::read(device::file_t *filp, char *buffer, size_t buflen)
 {
 	unsigned count = buflen / sizeof(struct baro_report);
 	struct baro_report *brp = reinterpret_cast<struct baro_report *>(buffer);
@@ -321,7 +300,7 @@ BMP280::read(struct file *filp, char *buffer, size_t buflen)
 		return -EIO;
 	}
 
-	usleep(TICK2USEC(_max_mesure_ticks));
+	usleep(USEC_PER_TICK * _max_mesure_ticks);
 
 	if (collect()) {
 		return -EIO;
@@ -335,7 +314,7 @@ BMP280::read(struct file *filp, char *buffer, size_t buflen)
 }
 
 int
-BMP280::ioctl(struct file *filp, int cmd, unsigned long arg)
+BMP280::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 {
 	switch (cmd) {
 
@@ -363,7 +342,7 @@ BMP280::ioctl(struct file *filp, int cmd, unsigned long arg)
 			/* FALLTHROUGH */
 			default: {
 					if (ticks == 0) {
-						ticks = USEC2TICK(USEC_PER_SEC / arg);
+						ticks = USEC2TICK(USEC_PER_TICK / arg);
 					}
 
 					/* do we need to start internal polling? */
@@ -392,7 +371,7 @@ BMP280::ioctl(struct file *filp, int cmd, unsigned long arg)
 			return SENSOR_POLLRATE_MANUAL;
 		}
 
-		return (USEC_PER_SEC / USEC_PER_TICK / _report_ticks);
+		return (USEC_PER_TICK / _report_ticks);
 
 	case SENSORIOCSQUEUEDEPTH: {
 			/* lower bound is mandatory, upper bound is a sanity check */
@@ -400,14 +379,14 @@ BMP280::ioctl(struct file *filp, int cmd, unsigned long arg)
 				return -EINVAL;
 			}
 
-			irqstate_t flags = px4_enter_critical_section();
+			ATOMIC_ENTER;
 
 			if (!_reports->resize(arg)) {
-				px4_leave_critical_section(flags);
+				ATOMIC_LEAVE;
 				return -ENOMEM;
 			}
 
-			px4_leave_critical_section(flags);
+			ATOMIC_LEAVE;
 			return OK;
 		}
 
@@ -594,7 +573,7 @@ BMP280::print_info()
 {
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
-	printf("poll interval:  %u us \n", _report_ticks * USEC_PER_TICK);
+	printf("poll interval:  %lu us \n", _report_ticks * USEC_PER_TICK);
 
 	sensor_baro_s brp = {};
 	_reports->get(&brp);
@@ -707,7 +686,7 @@ start(enum BMP280_BUS busid)
 	bool started = false;
 
 	for (i = 0; i < NUM_BUS_OPTIONS; i++) {
-		if (busid == BMP280_BUS_ALL && bus_options[i].dev != NULL) {
+		if (busid == BMP280_BUS_ALL && bus_options[i].dev != nullptr) {
 			// this device is already started
 			continue;
 		}
@@ -738,7 +717,7 @@ struct bmp280_bus_option &find_bus(enum BMP280_BUS busid)
 {
 	for (uint8_t i = 0; i < NUM_BUS_OPTIONS; i++) {
 		if ((busid == BMP280_BUS_ALL ||
-		     busid == bus_options[i].busid) && bus_options[i].dev != NULL) {
+		     busid == bus_options[i].busid) && bus_options[i].dev != nullptr) {
 			return bus_options[i];
 		}
 	}

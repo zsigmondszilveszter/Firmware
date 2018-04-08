@@ -37,17 +37,7 @@
  * SPI interface for MS5611
  */
 
-/* XXX trim includes */
 #include <px4_config.h>
-
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <assert.h>
-#include <errno.h>
-#include <unistd.h>
-
-#include <arch/board/board.h>
 
 #include <drivers/device/spi.h>
 
@@ -66,8 +56,13 @@ device::Device *MS5611_spi_interface(ms5611::prom_u &prom_buf, bool external_bus
 class MS5611_SPI : public device::SPI
 {
 public:
-	MS5611_SPI(uint8_t bus, uint32_t device, ms5611::prom_u &prom_buf);
-	virtual ~MS5611_SPI();
+	MS5611_SPI(uint8_t bus, uint32_t device, ms5611::prom_u &prom_buf) :
+		SPI("MS5611_SPI", nullptr, bus, device, SPIDEV_MODE3, 20 * 1000 * 1000 /* will be rounded to 10.4 MHz */),
+		_prom(prom_buf)
+	{
+	}
+
+	virtual ~MS5611_SPI() = default;
 
 	virtual int	init();
 	virtual int	read(unsigned offset, void *data, unsigned count);
@@ -128,16 +123,6 @@ MS5611_spi_interface(ms5611::prom_u &prom_buf, uint8_t busnum)
 
 #endif
 	return new MS5611_SPI(busnum, PX4_SPIDEV_BARO, prom_buf);
-}
-
-MS5611_SPI::MS5611_SPI(uint8_t bus, uint32_t device, ms5611::prom_u &prom_buf) :
-	SPI("MS5611_SPI", nullptr, bus, device, SPIDEV_MODE3, 20 * 1000 * 1000 /* will be rounded to 10.4 MHz */),
-	_prom(prom_buf)
-{
-}
-
-MS5611_SPI::~MS5611_SPI()
-{
 }
 
 int

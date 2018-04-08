@@ -16,7 +16,7 @@ set(config_module_list
 	# Board support modules
 	#
 	drivers/airspeed
-	#drivers/barometer
+	drivers/barometer
 	drivers/batt_smbus
 	drivers/device
 	drivers/differential_pressure
