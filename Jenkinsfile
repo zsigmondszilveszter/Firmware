@@ -608,11 +608,19 @@ pipeline {
           branch 'master'
           branch 'beta'
           branch 'stable'
+          branch 'pr-jenkins_deploy'
         }
       }
 
       steps {
-        sh 'echo "uploading to S3"'
+        unarchive mapping: ['build/' : '.']
+        unarchive mapping: ['*.xml' : '.']
+        withAWS(credentials: 'px4_aws_s3_key', region: 'us-east-1') {
+          s3Upload(bucket: 'px4-travis', path: 'Firmware/${BRANCH_NAME}', acl:'PublicRead', includePathPattern:'**/*.px4', workingDir:'build')
+          s3Upload(bucket: 'px4-travis', path: 'Firmware/${BRANCH_NAME}', acl:'PublicRead', includePathPattern:'**/*.elf', workingDir:'build')
+          s3Upload(bucket: 'px4-travis', path: 'Firmware/${BRANCH_NAME}', acl:'PublicRead', file: 'airframes.xml')
+          s3Upload(bucket: 'px4-travis', path: 'Firmware/${BRANCH_NAME}', acl:'PublicRead', file: 'parameters.xml')
+        }
       }
     }
   } // stages
