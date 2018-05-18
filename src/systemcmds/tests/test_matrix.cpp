@@ -700,8 +700,8 @@ bool MatrixTest::dcmRenormTests()
 	float err = 0.0f;
 
 	if (verbose) {
-		for (int row = 0; row < 3; row++) {
-			matrix::Vector3f rvec(A._data[row]);
+		for (auto &row : A._data) {
+			matrix::Vector3f rvec(row);
 			err += fabsf(1.0f - rvec.length());
 		}
 
@@ -712,8 +712,8 @@ bool MatrixTest::dcmRenormTests()
 
 	err = 0.0f;
 
-	for (int row = 0; row < 3; row++) {
-		matrix::Vector3f rvec(A._data[row]);
+	for (auto &row : A._data) {
+		matrix::Vector3f rvec(row);
 		err += fabsf(1.0f - rvec.length());
 	}
 

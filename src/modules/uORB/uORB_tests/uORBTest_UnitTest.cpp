@@ -203,8 +203,8 @@ int uORBTest::UnitTest::test_unadvertise()
 	test_note("Testing unadvertise");
 
 	//we still have the advertisements from the previous test_multi calls.
-	for (int i = 0; i < 4; ++i) {
-		int ret = orb_unadvertise(_pfd[i]);
+	for (auto &i : _pfd) {
+		int ret = orb_unadvertise(i);
 
 		if (ret != PX4_OK) {
 			return test_fail("orb_unadvertise failed (%i)", ret);
@@ -223,8 +223,8 @@ int uORBTest::UnitTest::test_unadvertise()
 		}
 	}
 
-	for (int i = 0; i < 4; ++i) {
-		orb_unadvertise(_pfd[i]);
+	for (auto &i : _pfd) {
+		orb_unadvertise(i);
 	}
 
 	return test_note("PASS unadvertise");
@@ -451,8 +451,8 @@ int uORBTest::UnitTest::pub_test_multi2_main()
 	usleep(100 * 1000);
 	_thread_should_exit = true;
 
-	for (int i = 0; i < num_instances; ++i) {
-		orb_unadvertise(orb_pub[i]);
+	for (auto &i : orb_pub) {
+		orb_unadvertise(i);
 	}
 
 	return 0;
@@ -516,8 +516,8 @@ int uORBTest::UnitTest::test_multi2()
 		}
 	}
 
-	for (int i = 0; i < num_instances; ++i) {
-		orb_unsubscribe(orb_data_fd[i]);
+	for (int i : orb_data_fd) {
+		orb_unsubscribe(i);
 	}
 
 	return test_note("PASS multi-topic 2 test (queue simulation)");

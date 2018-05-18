@@ -93,19 +93,16 @@ static int writer_main(int argc, char *argv[])
 class PrivData
 {
 public:
-	PrivData() : _read_offset(0) {}
+	PrivData() {}
 	~PrivData() {}
 
-	size_t _read_offset;
+	size_t _read_offset{0};
 };
 
 class VCDevNode : public CDev
 {
 public:
-	VCDevNode() :
-		CDev("vcdevtest", TESTDEV),
-		_is_open_for_write(false),
-		_write_offset(0) {}
+	VCDevNode() : CDev("vcdevtest", TESTDEV) {}
 
 	~VCDevNode() {}
 
@@ -114,8 +111,8 @@ public:
 	virtual ssize_t write(device::file_t *handlep, const char *buffer, size_t buflen);
 	virtual ssize_t read(device::file_t *handlep, char *buffer, size_t buflen);
 private:
-	bool _is_open_for_write;
-	size_t _write_offset;
+	bool _is_open_for_write{false};
+	size_t _write_offset{0};
 	char     _buf[1000];
 };
 

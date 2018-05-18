@@ -404,8 +404,8 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 
 	calibrate_cancel_unsubscribe(cancel_sub);
 
-	for (unsigned s = 0; s < max_gyros; s++) {
-		px4_close(worker_data.gyro_sensor_sub[s]);
+	for (int s : worker_data.gyro_sensor_sub) {
+		px4_close(s);
 	}
 
 	if (res == PX4_OK) {

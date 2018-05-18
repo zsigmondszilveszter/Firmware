@@ -390,7 +390,6 @@ Logger *Logger::instantiate(int argc, char *argv[])
 
 Logger::Logger(LogWriter::Backend backend, size_t buffer_size, uint32_t log_interval, const char *poll_topic_name,
 	       bool log_on_start, bool log_until_shutdown, bool log_name_timestamp, unsigned int queue_size) :
-	_arm_override(false),
 	_log_on_start(log_on_start),
 	_log_until_shutdown(log_until_shutdown),
 	_log_name_timestamp(log_name_timestamp),
@@ -486,11 +485,11 @@ bool Logger::add_topic(const char *name, unsigned interval)
 			bool already_added = false;
 
 			// check if already added: if so, only update the interval
-			for (size_t j = 0; j < _subscriptions.size(); ++j) {
-				if (_subscriptions[j].metadata == topics[i]) {
+			for (auto & _subscription : _subscriptions) {
+				if (_subscription.metadata == topics[i]) {
 					PX4_DEBUG("logging topic %s, interval: %i, already added, only setting interval",
 						  topics[i]->o_name, interval);
-					subscription = &_subscriptions[j];
+					subscription = &_subscription;
 					already_added = true;
 					break;
 				}
@@ -1216,10 +1215,10 @@ void Logger::run()
 
 	//unsubscribe
 	for (LoggerSubscription &sub : _subscriptions) {
-		for (int instance = 0; instance < ORB_MULTI_MAX_INSTANCES; instance++) {
-			if (sub.fd[instance] >= 0) {
-				orb_unsubscribe(sub.fd[instance]);
-				sub.fd[instance] = -1;
+		for (int & instance : sub.fd) {
+			if (instance >= 0) {
+				orb_unsubscribe(instance);
+				instance = -1;
 			}
 		}
 	}

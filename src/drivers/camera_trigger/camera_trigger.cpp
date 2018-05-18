@@ -160,23 +160,23 @@ private:
 
 	static struct work_s	_work;
 
-	float			_activation_time;
-	float			_interval;
-	float 			_distance;
-	uint32_t 		_trigger_seq;
-	bool			_trigger_enabled;
-	bool			_trigger_paused;
-	bool			_one_shot;
-	bool			_test_shot;
-	bool 			_turning_on;
+	float			_activation_time{0.5f};
+	float			_interval{100.0f};
+	float 			_distance{25.0f};
+	uint32_t 		_trigger_seq{0};
+	bool			_trigger_enabled{false};
+	bool			_trigger_paused{false};
+	bool			_one_shot{false};
+	bool			_test_shot{false};
+	bool 			_turning_on{false};
 	matrix::Vector2f	_last_shoot_position;
-	bool			_valid_position;
+	bool			_valid_position{false};
 
-	int			_command_sub;
-	int			_lpos_sub;
+	int			_command_sub{-1};
+	int			_lpos_sub{-1};
 
-	orb_advert_t		_trigger_pub;
-	orb_advert_t		_cmd_ack_pub;
+	orb_advert_t		_trigger_pub{nullptr};
+	orb_advert_t		_cmd_ack_pub{nullptr};
 
 	param_t			_p_mode;
 	param_t			_p_activation_time;
@@ -184,10 +184,10 @@ private:
 	param_t			_p_distance;
 	param_t			_p_interface;
 
-	trigger_mode_t		_trigger_mode;
+	trigger_mode_t		_trigger_mode{TRIGGER_MODE_NONE};
 
-	camera_interface_mode_t	_camera_interface_mode;
-	CameraInterface		*_camera_interface;  ///< instance of camera interface
+	camera_interface_mode_t	_camera_interface_mode{CAMERA_INTERFACE_MODE_GPIO};
+	CameraInterface		*_camera_interface{nullptr};  ///< instance of camera interface
 
 	/**
 	 * Vehicle command handler
@@ -235,24 +235,7 @@ CameraTrigger::CameraTrigger() :
 	_disengage_turn_on_off_call {},
 	_keepalivecall_up {},
 	_keepalivecall_down {},
-	_activation_time(0.5f /* ms */),
-	_interval(100.0f /* ms */),
-	_distance(25.0f /* m */),
-	_trigger_seq(0),
-	_trigger_enabled(false),
-	_trigger_paused(false),
-	_one_shot(false),
-	_test_shot(false),
-	_turning_on(false),
-	_last_shoot_position(0.0f, 0.0f),
-	_valid_position(false),
-	_command_sub(-1),
-	_lpos_sub(-1),
-	_trigger_pub(nullptr),
-	_cmd_ack_pub(nullptr),
-	_trigger_mode(TRIGGER_MODE_NONE),
-	_camera_interface_mode(CAMERA_INTERFACE_MODE_GPIO),
-	_camera_interface(nullptr)
+	_last_shoot_position(0.0f, 0.0f)
 {
 	// Initiate camera interface based on camera_interface_mode
 	if (_camera_interface != nullptr) {

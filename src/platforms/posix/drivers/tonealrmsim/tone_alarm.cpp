@@ -132,12 +132,12 @@ private:
 	const char		 *_tune_names[TONE_NUMBER_OF_TUNES];
 	static const uint8_t	_note_tab[];
 
-	unsigned		_default_tune_number; // number of currently playing default tune (0 for none)
+	unsigned		_default_tune_number{0}; // number of currently playing default tune (0 for none)
 
-	const char		*_user_tune;
+	const char		*_user_tune{nullptr};
 
-	const char		*_tune;		// current tune string
-	const char		*_next;		// next note in the string
+	const char		*_tune{nullptr};		// current tune string
+	const char		*_next{nullptr};		// next note in the string
 
 	unsigned		_tempo;
 	unsigned		_note_length;
@@ -212,10 +212,6 @@ extern "C" __EXPORT int tone_alarm_main(int argc, char *argv[]);
 
 ToneAlarm::ToneAlarm() :
 	VirtDevObj("tone_alarm", TONEALARM0_DEVICE_PATH, nullptr, 0),
-	_default_tune_number(0),
-	_user_tune(nullptr),
-	_tune(nullptr),
-	_next(nullptr),
 	_note_call{}
 {
 	_default_tunes[TONE_STARTUP_TUNE] = "MFT240L8 O4aO5dc O4aO5dc O4aO5dc L16dcdcdcdc";		// startup tune

@@ -771,11 +771,9 @@ pwm_main(int argc, char *argv[])
 		unsigned phase_counter = 0;
 		unsigned const phase_maxcount = 20;
 
-		for (unsigned steps_timing_index = 0;
-		     steps_timing_index < sizeof(steps_timings_us) / sizeof(steps_timings_us[0]);
-		     steps_timing_index++) {
+		for (unsigned int steps_timings_u : steps_timings_us) {
 
-			PX4_INFO("Step input (0 to 100%%) over %u us ramp", steps_timings_us[steps_timing_index]);
+			PX4_INFO("Step input (0 to 100%%) over %u us ramp", steps_timings_u);
 
 			while (1) {
 				for (unsigned i = 0; i < servo_count; i++) {
@@ -830,7 +828,7 @@ pwm_main(int argc, char *argv[])
 				}
 
 				if (phase == 1) {
-					usleep(steps_timings_us[steps_timing_index] / phase_maxcount);
+					usleep(steps_timings_u / phase_maxcount);
 
 				} else if (phase == 0) {
 					usleep(50000);

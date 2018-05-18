@@ -107,24 +107,24 @@ public:
 	void		lock_release();
 
 private:
-	bool		_task_should_exit;		/**< if true, task should exit */
-	int		_main_task;			/**< handle for task */
-	orb_advert_t	_mavlink_log_pub;
+	bool		_task_should_exit{false};		/**< if true, task should exit */
+	int		_main_task{-1};			/**< handle for task */
+	orb_advert_t	_mavlink_log_pub{nullptr};
 
-	int		_command_sub;
-	int		_wind_estimate_sub;
+	int		_command_sub{-1};
+	int		_wind_estimate_sub{-1};
 	struct vehicle_command_s	_command;
 	struct vehicle_global_position_s _global_pos;
 	map_projection_reference_s ref;
 
-	orb_advert_t	_actuator_pub;
+	orb_advert_t	_actuator_pub{nullptr};
 	struct actuator_controls_s _actuators;
 
-	bool		_drop_approval;
-	hrt_abstime	_doors_opened;
-	hrt_abstime	_drop_time;
+	bool		_drop_approval{false};
+	hrt_abstime	_doors_opened{0};
+	hrt_abstime	_drop_time{0};
 
-	float		_alt_clearance;
+	float		_alt_clearance{70.0f};
 
 	struct position_s {
 		double lat;	///< degrees
@@ -139,10 +139,10 @@ private:
 		DROP_STATE_BAY_OPEN,
 		DROP_STATE_DROPPED,
 		DROP_STATE_BAY_CLOSED
-	} _drop_state;
+	} _drop_state{DROP_STATE_INIT};
 
 	struct mission_s	_onboard_mission;
-	orb_advert_t		_onboard_mission_pub;
+	orb_advert_t		_onboard_mission_pub{nullptr};
 
 	void		task_main();
 
@@ -167,26 +167,13 @@ BottleDrop	*g_bottle_drop;
 }
 
 BottleDrop::BottleDrop() :
-
-	_task_should_exit(false),
-	_main_task(-1),
-	_mavlink_log_pub(nullptr),
-	_command_sub(-1),
-	_wind_estimate_sub(-1),
 	_command {},
 	_global_pos {},
 	ref {},
-	_actuator_pub(nullptr),
 	_actuators {},
-	_drop_approval(false),
-	_doors_opened(0),
-	_drop_time(0),
-	_alt_clearance(70.0f),
 	_target_position {},
 	_drop_position {},
-	_drop_state(DROP_STATE_INIT),
-	_onboard_mission {},
-	_onboard_mission_pub(nullptr)
+	_onboard_mission {}
 {
 	_onboard_mission.dataman_id = DM_KEY_WAYPOINTS_ONBOARD;
 }

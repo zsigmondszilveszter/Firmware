@@ -105,8 +105,8 @@ MulticopterAttitudeControl::MulticopterAttitudeControl() :
 	{initial_update_rate_hz, 50.f},
 	{initial_update_rate_hz, 50.f}} // will be initialized correctly when params are loaded
 {
-	for (uint8_t i = 0; i < MAX_GYRO_COUNT; i++) {
-		_sensor_gyro_sub[i] = -1;
+	for (int & i : _sensor_gyro_sub) {
+		i = -1;
 	}
 
 	_vehicle_status.is_rotary_wing = true;

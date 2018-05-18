@@ -166,14 +166,14 @@ void MavlinkCommandSender::check_timeout(mavlink_channel_t channel)
 		int8_t max_sent = 0;
 		int8_t min_sent = INT8_MAX;
 
-		for (unsigned i = 0; i < MAX_MAVLINK_CHANNEL; ++i) {
-			if (item->num_sent_per_channel[i] > max_sent) {
-				max_sent = item->num_sent_per_channel[i];
+		for (signed char i : item->num_sent_per_channel) {
+			if (i > max_sent) {
+				max_sent = i;
 			}
 
-			if ((item->num_sent_per_channel[i] != -1) &&
-			    (item->num_sent_per_channel[i] < min_sent)) {
-				min_sent = item->num_sent_per_channel[i];
+			if ((i != -1) &&
+			    (i < min_sent)) {
+				min_sent = i;
 			}
 		}
 

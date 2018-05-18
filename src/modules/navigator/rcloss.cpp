@@ -55,8 +55,7 @@
 
 RCLoss::RCLoss(Navigator *navigator) :
 	MissionBlock(navigator),
-	ModuleParams(navigator),
-	_rcl_state(RCL_STATE_NONE)
+	ModuleParams(navigator)
 {
 }
 

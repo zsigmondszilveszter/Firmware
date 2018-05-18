@@ -111,15 +111,15 @@ public:
 
 private:
 	uint8_t _rotation;
-	bool				_task_should_exit;
-	int 				_task_handle;
+	bool				_task_should_exit{false};
+	int 				_task_handle{-1};
 	char 				_port[20];
-	int				_class_instance;
-	int				_orb_class_instance;
-	orb_advert_t			_distance_sensor_topic;
+	int				_class_instance{-1};
+	int				_orb_class_instance{-1};
+	orb_advert_t			_distance_sensor_topic{nullptr};
 
-	unsigned 	_head;
-	unsigned 	_tail;
+	unsigned 	_head{0};
+	unsigned 	_tail{0};
 	uint8_t 	_buf[BUF_LEN];
 
 	static int task_main_trampoline(int argc, char *argv[]);
@@ -137,15 +137,7 @@ Radar	*g_dev;
 
 Radar::Radar(uint8_t rotation, const char *port) :
 	CDev("Radar", RANGE_FINDER0_DEVICE_PATH),
-	_rotation(rotation),
-	_task_should_exit(false),
-	_task_handle(-1),
-	_class_instance(-1),
-	_orb_class_instance(-1),
-	_distance_sensor_topic(nullptr),
-	_head(0),
-	_tail(0)
-
+	_rotation(rotation)
 {
 	/* store port name */
 	strncpy(_port, port, sizeof(_port));

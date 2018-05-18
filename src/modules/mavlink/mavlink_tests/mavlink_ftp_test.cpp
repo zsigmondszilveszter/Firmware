@@ -189,8 +189,8 @@ bool MavlinkFtpTest::_list_test()
 #endif /* __PX4_NUTTX */
 	};
 
-	for (size_t i = 0; i < sizeof(rgTestCases) / sizeof(rgTestCases[0]); i++) {
-		const struct _testCase *test = &rgTestCases[i];
+	for (auto &rgTestCase : rgTestCases) {
+		const struct _testCase *test = &rgTestCase;
 
 		payload.opcode = MavlinkFTP::kCmdListDirectory;
 		payload.offset = 0;
@@ -307,9 +307,9 @@ bool MavlinkFtpTest::_open_terminate_test()
 	MavlinkFTP::PayloadHeader		payload;
 	const MavlinkFTP::PayloadHeader		*reply;
 
-	for (size_t i = 0; i < sizeof(_rgDownloadTestCases) / sizeof(_rgDownloadTestCases[0]); i++) {
+	for (const auto &_rgDownloadTestCase : _rgDownloadTestCases) {
 		struct stat st;
-		const DownloadTestCase *test = &_rgDownloadTestCases[i];
+		const DownloadTestCase *test = &_rgDownloadTestCase;
 
 		payload.opcode = MavlinkFTP::kCmdOpenFileRO;
 		payload.offset = 0;
@@ -396,9 +396,9 @@ bool MavlinkFtpTest::_read_test()
 	MavlinkFTP::PayloadHeader		payload;
 	const MavlinkFTP::PayloadHeader		*reply;
 
-	for (size_t i = 0; i < sizeof(_rgDownloadTestCases) / sizeof(_rgDownloadTestCases[0]); i++) {
+	for (const auto &_rgDownloadTestCase : _rgDownloadTestCases) {
 		struct stat st;
-		const DownloadTestCase *test = &_rgDownloadTestCases[i];
+		const DownloadTestCase *test = &_rgDownloadTestCase;
 
 		// Read in the file so we can compare it to what we get back
 		ut_compare("stat failed", stat(test->file, &st), 0);
@@ -510,9 +510,9 @@ bool MavlinkFtpTest::_burst_test()
 
 
 
-	for (size_t i = 0; i < sizeof(_rgDownloadTestCases) / sizeof(_rgDownloadTestCases[0]); i++) {
+	for (const auto &_rgDownloadTestCase : _rgDownloadTestCases) {
 		struct stat st;
-		const DownloadTestCase *test = &_rgDownloadTestCases[i];
+		const DownloadTestCase *test = &_rgDownloadTestCase;
 
 		// Read in the file so we can compare it to what we get back
 		ut_compare("stat failed", stat(test->file, &st), 0);
@@ -652,8 +652,8 @@ bool MavlinkFtpTest::_removedirectory_test()
 	ut_assert("open failed", (fd = ::open(_unittest_microsd_file, O_CREAT | O_EXCL, S_IRWXU | S_IRWXG | S_IRWXO)) != -1);
 	::close(fd);
 
-	for (size_t i = 0; i < sizeof(rgTestCases) / sizeof(rgTestCases[0]); i++) {
-		const struct _testCase *test = &rgTestCases[i];
+	for (const auto &rgTestCase : rgTestCases) {
+		const struct _testCase *test = &rgTestCase;
 
 		if (test->deleteFile) {
 			ut_compare("unlink failed", ::unlink(_unittest_microsd_file), 0);
@@ -702,8 +702,8 @@ bool MavlinkFtpTest::_createdirectory_test()
 		{ "/fs/microsd/bogus/bogus",	false, false },
 	};
 
-	for (size_t i = 0; i < sizeof(rgTestCases) / sizeof(rgTestCases[0]); i++) {
-		const struct _testCase *test = &rgTestCases[i];
+	for (const auto &rgTestCase : rgTestCases) {
+		const struct _testCase *test = &rgTestCase;
 
 		payload.opcode = MavlinkFTP::kCmdCreateDirectory;
 		payload.offset = 0;
@@ -761,8 +761,8 @@ bool MavlinkFtpTest::_removefile_test()
 	ut_assert("open failed", (fd = ::open(_unittest_microsd_file, O_CREAT | O_EXCL, S_IRWXU | S_IRWXG | S_IRWXO)) != -1);
 	::close(fd);
 
-	for (size_t i = 0; i < sizeof(rgTestCases) / sizeof(rgTestCases[0]); i++) {
-		const struct _testCase *test = &rgTestCases[i];
+	for (const auto &rgTestCase : rgTestCases) {
+		const struct _testCase *test = &rgTestCase;
 
 		payload.opcode = MavlinkFTP::kCmdRemoveFile;
 		payload.offset = 0;

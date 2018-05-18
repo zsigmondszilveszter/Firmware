@@ -249,8 +249,8 @@ int rover_steering_control_thread_main(int argc, char *argv[])
 
 
 	/* publish actuator controls with zero values */
-	for (unsigned i = 0; i < (sizeof(actuators.control) / sizeof(actuators.control[0])); i++) {
-		actuators.control[i] = 0.0f;
+	for (float &i : actuators.control) {
+		i = 0.0f;
 	}
 
 	struct vehicle_attitude_setpoint_s _att_sp = {};
@@ -373,8 +373,8 @@ int rover_steering_control_thread_main(int argc, char *argv[])
 	thread_running = false;
 
 	/* kill all outputs */
-	for (unsigned i = 0; i < (sizeof(actuators.control) / sizeof(actuators.control[0])); i++) {
-		actuators.control[i] = 0.0f;
+	for (float &i : actuators.control) {
+		i = 0.0f;
 	}
 
 	actuators.timestamp = hrt_absolute_time();

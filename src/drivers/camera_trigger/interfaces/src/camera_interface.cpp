@@ -31,8 +31,8 @@ void CameraInterface::get_pins()
 	param_get(_p_pin, &pin_list);
 
 	// Set all pins as invalid
-	for (unsigned i = 0; i < arraySize(_pins); i++) {
-		_pins[i] = -1;
+	for (int &_pin : _pins) {
+		_pin = -1;
 	}
 
 	// Convert number to individual channels

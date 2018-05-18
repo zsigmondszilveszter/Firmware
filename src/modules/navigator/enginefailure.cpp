@@ -53,8 +53,7 @@
 #include "enginefailure.h"
 
 EngineFailure::EngineFailure(Navigator *navigator) :
-	MissionBlock(navigator),
-	_ef_state(EF_STATE_NONE)
+	MissionBlock(navigator)
 {
 }
 

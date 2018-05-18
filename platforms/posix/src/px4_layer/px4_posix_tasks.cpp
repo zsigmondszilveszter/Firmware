@@ -71,8 +71,8 @@ pthread_mutex_t task_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct task_entry {
 	pthread_t pid;
 	std::string name;
-	bool isused;
-	task_entry() : isused(false) {}
+	bool isused{false};
+	task_entry() {}
 };
 
 static task_entry taskmap[PX4_MAX_TASKS] = {};
@@ -415,9 +415,9 @@ const char *px4_get_taskname()
 
 	pthread_mutex_lock(&task_mutex);
 
-	for (int i = 0; i < PX4_MAX_TASKS; i++) {
-		if (taskmap[i].isused && taskmap[i].pid == pid) {
-			prog_name = taskmap[i].name.c_str();
+	for (auto &i : taskmap) {
+		if (i.isused && i.pid == pid) {
+			prog_name = i.name.c_str();
 		}
 	}
 

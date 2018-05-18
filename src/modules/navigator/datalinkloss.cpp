@@ -56,8 +56,7 @@
 
 DataLinkLoss::DataLinkLoss(Navigator *navigator) :
 	MissionBlock(navigator),
-	ModuleParams(navigator),
-	_dll_state(DLL_STATE_NONE)
+	ModuleParams(navigator)
 {
 }
 

@@ -137,23 +137,23 @@ private:
 	bool 		_lnd_reached_ground = false; 		/**<true if controller assumes the vehicle has reached the ground after landing */
 	bool 		_triplet_lat_lon_finite = true; 		/**<true if triplets current is non-finite */
 
-	int		_control_task;			/**< task handle for task */
-	orb_advert_t	_mavlink_log_pub;		/**< mavlink log advert */
+	int		_control_task{-1};			/**< task handle for task */
+	orb_advert_t	_mavlink_log_pub{nullptr};		/**< mavlink log advert */
 
 	int		_vehicle_status_sub;		/**< vehicle status subscription */
 	int		_vehicle_land_detected_sub;	/**< vehicle land detected subscription */
-	int		_vehicle_attitude_sub;		/**< control state subscription */
-	int		_control_mode_sub;		/**< vehicle control mode subscription */
-	int		_params_sub;			/**< notification of parameter updates */
-	int		_manual_sub;			/**< notification of manual control updates */
-	int		_local_pos_sub;			/**< vehicle local position */
-	int		_pos_sp_triplet_sub;		/**< position setpoint triplet */
-	int		_home_pos_sub; 			/**< home position */
+	int		_vehicle_attitude_sub{-1};		/**< control state subscription */
+	int		_control_mode_sub{-1};		/**< vehicle control mode subscription */
+	int		_params_sub{-1};			/**< notification of parameter updates */
+	int		_manual_sub{-1};			/**< notification of manual control updates */
+	int		_local_pos_sub{-1};			/**< vehicle local position */
+	int		_pos_sp_triplet_sub{-1};		/**< position setpoint triplet */
+	int		_home_pos_sub{-1}; 			/**< home position */
 
-	orb_advert_t	_att_sp_pub;			/**< attitude setpoint publication */
-	orb_advert_t	_local_pos_sp_pub;		/**< vehicle local position setpoint publication */
+	orb_advert_t	_att_sp_pub{nullptr};			/**< attitude setpoint publication */
+	orb_advert_t	_local_pos_sp_pub{nullptr};		/**< vehicle local position setpoint publication */
 
-	orb_id_t _attitude_setpoint_id;
+	orb_id_t _attitude_setpoint_id{nullptr};
 
 	struct vehicle_status_s 			_vehicle_status; 	/**< vehicle status */
 	struct vehicle_land_detected_s 			_vehicle_land_detected;	/**< vehicle land detected */
@@ -252,9 +252,9 @@ private:
 		deceleration
 	};
 
-	manual_stick_input _user_intention_xy; /**< defines what the user intends to do derived from the stick input */
+	manual_stick_input _user_intention_xy{brake}; /**< defines what the user intends to do derived from the stick input */
 	manual_stick_input
-	_user_intention_z; /**< defines what the user intends to do derived from the stick input in z direciton */
+	_user_intention_z{brake}; /**< defines what the user intends to do derived from the stick input in z direciton */
 
 	matrix::Vector3f _pos_p;
 	matrix::Vector3f _vel_p;
@@ -267,10 +267,10 @@ private:
 	float _global_yaw_max;
 
 	struct map_projection_reference_s _ref_pos;
-	float _ref_alt;
-	bool _ref_alt_is_global; /** true when the reference altitude is defined in a global reference frame */
-	hrt_abstime _ref_timestamp;
-	hrt_abstime _last_warn;
+	float _ref_alt{0.0f};
+	bool _ref_alt_is_global{false}; /** true when the reference altitude is defined in a global reference frame */
+	hrt_abstime _ref_timestamp{0};
+	hrt_abstime _last_warn{0};
 
 	matrix::Vector3f _thrust_int;
 	matrix::Vector3f _pos;
@@ -285,27 +285,27 @@ private:
 	matrix::Vector2f _stick_input_xy_prev; /**< for manual controlled mode to detect direction change */
 
 	matrix::Dcmf _R;			/**< rotation matrix from attitude quaternions */
-	float _yaw;				/**< yaw angle (euler) */
-	float _yaw_takeoff;	/**< home yaw angle present when vehicle was taking off (euler) */
-	float _man_yaw_offset; /**< current yaw offset in manual mode */
+	float _yaw{0.0f};				/**< yaw angle (euler) */
+	float _yaw_takeoff{0.0f};	/**< home yaw angle present when vehicle was taking off (euler) */
+	float _man_yaw_offset{0.0f}; /**< current yaw offset in manual mode */
 
-	float _vel_max_xy;  /**< equal to vel_max except in auto mode when close to target */
-	bool _vel_sp_significant; /** true when the velocity setpoint is over 50% of the _vel_max_xy limit */
-	float _acceleration_state_dependent_xy; /**< acceleration limit applied in manual mode */
-	float _acceleration_state_dependent_z; /**< acceleration limit applied in manual mode in z */
-	float _manual_jerk_limit_xy; /**< jerk limit in manual mode dependent on stick input */
-	float _manual_jerk_limit_z; /**< jerk limit in manual mode in z */
-	float _z_derivative; /**< velocity in z that agrees with position rate */
+	float _vel_max_xy{0.0f};  /**< equal to vel_max except in auto mode when close to target */
+	bool _vel_sp_significant{false}; /** true when the velocity setpoint is over 50% of the _vel_max_xy limit */
+	float _acceleration_state_dependent_xy{0.0f}; /**< acceleration limit applied in manual mode */
+	float _acceleration_state_dependent_z{0.0f}; /**< acceleration limit applied in manual mode in z */
+	float _manual_jerk_limit_xy{1.0f}; /**< jerk limit in manual mode dependent on stick input */
+	float _manual_jerk_limit_z{1.0f}; /**< jerk limit in manual mode in z */
+	float _z_derivative{0.0f}; /**< velocity in z that agrees with position rate */
 
-	float _takeoff_vel_limit; /**< velocity limit value which gets ramped up */
+	float _takeoff_vel_limit{0.0f}; /**< velocity limit value which gets ramped up */
 
-	float _min_hagl_limit; /**< minimum continuous height above ground (m) */
+	float _min_hagl_limit{0.0f}; /**< minimum continuous height above ground (m) */
 
 	// counters for reset events on position and velocity states
 	// they are used to identify a reset event
-	uint8_t _z_reset_counter;
-	uint8_t _xy_reset_counter;
-	uint8_t _heading_reset_counter;
+	uint8_t _z_reset_counter{0};
+	uint8_t _xy_reset_counter{0};
+	uint8_t _heading_reset_counter{0};
 
 	matrix::Dcmf _R_setpoint;
 
@@ -429,22 +429,6 @@ MulticopterPositionControl	*g_control;
 MulticopterPositionControl::MulticopterPositionControl() :
 	SuperBlock(nullptr, "MPC"),
 	ModuleParams(nullptr),
-	_control_task(-1),
-	_mavlink_log_pub(nullptr),
-
-	/* subscriptions */
-	_vehicle_attitude_sub(-1),
-	_control_mode_sub(-1),
-	_params_sub(-1),
-	_manual_sub(-1),
-	_local_pos_sub(-1),
-	_pos_sp_triplet_sub(-1),
-	_home_pos_sub(-1),
-
-	/* publications */
-	_att_sp_pub(nullptr),
-	_local_pos_sp_pub(nullptr),
-	_attitude_setpoint_id(nullptr),
 	_vehicle_status{},
 	_vehicle_land_detected{},
 	_att{},
@@ -460,28 +444,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_vel_z_deriv(this, "VELD"),
 	_manual_direction_change_hysteresis(false),
 	_filter_manual_pitch(50.0f, 10.0f),
-	_filter_manual_roll(50.0f, 10.0f),
-	_user_intention_xy(brake),
-	_user_intention_z(brake),
-	_ref_alt(0.0f),
-	_ref_alt_is_global(false),
-	_ref_timestamp(0),
-	_last_warn(0),
-	_yaw(0.0f),
-	_yaw_takeoff(0.0f),
-	_man_yaw_offset(0.0f),
-	_vel_max_xy(0.0f),
-	_vel_sp_significant(false),
-	_acceleration_state_dependent_xy(0.0f),
-	_acceleration_state_dependent_z(0.0f),
-	_manual_jerk_limit_xy(1.0f),
-	_manual_jerk_limit_z(1.0f),
-	_z_derivative(0.0f),
-	_takeoff_vel_limit(0.0f),
-	_min_hagl_limit(0.0f),
-	_z_reset_counter(0),
-	_xy_reset_counter(0),
-	_heading_reset_counter(0)
+	_filter_manual_roll(50.0f, 10.0f)
 {
 	/* Make the attitude quaternion valid */
 	_att.q[0] = 1.0f;

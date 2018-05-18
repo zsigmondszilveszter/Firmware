@@ -47,8 +47,8 @@ PWMSim::PWMSim() :
 	_control_topics[2] = ORB_ID(actuator_controls_2);
 	_control_topics[3] = ORB_ID(actuator_controls_3);
 
-	for (unsigned i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS; i++) {
-		_control_subs[i] = -1;
+	for (int &_control_sub : _control_subs) {
+		_control_sub = -1;
 	}
 
 	CDev::init();
@@ -183,9 +183,9 @@ PWMSim::run()
 				update_rate_in_ms = 2;
 			}
 
-			for (unsigned i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS; i++) {
-				if (_control_subs[i] >= 0) {
-					orb_set_interval(_control_subs[i], update_rate_in_ms);
+			for (int _control_sub : _control_subs) {
+				if (_control_sub >= 0) {
+					orb_set_interval(_control_sub, update_rate_in_ms);
 				}
 			}
 
@@ -331,9 +331,9 @@ PWMSim::run()
 		}
 	}
 
-	for (unsigned i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS; i++) {
-		if (_control_subs[i] >= 0) {
-			orb_unsubscribe(_control_subs[i]);
+	for (int _control_sub : _control_subs) {
+		if (_control_sub >= 0) {
+			orb_unsubscribe(_control_sub);
 		}
 	}
 

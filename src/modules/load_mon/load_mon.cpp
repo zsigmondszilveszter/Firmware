@@ -117,10 +117,10 @@ private:
 	struct work_s _work;
 
 	struct cpuload_s _cpuload;
-	orb_advert_t _cpuload_pub;
-	hrt_abstime _last_idle_time;
+	orb_advert_t _cpuload_pub{nullptr};
+	hrt_abstime _last_idle_time{0};
 	perf_counter_t _stack_perf;
-	bool _stack_check_enabled;
+	bool _stack_check_enabled{false};
 };
 
 LoadMon::LoadMon() :
@@ -131,10 +131,7 @@ LoadMon::LoadMon() :
 #endif
 	_work {},
 	_cpuload{},
-	_cpuload_pub(nullptr),
-	_last_idle_time(0),
-	_stack_perf(perf_alloc(PC_ELAPSED, "stack_check")),
-	_stack_check_enabled(false)
+	_stack_perf(perf_alloc(PC_ELAPSED, "stack_check"))
 {
 	// Enable stack checking by param
 	param_t param_stack_check = param_find("SYS_STCK_EN");

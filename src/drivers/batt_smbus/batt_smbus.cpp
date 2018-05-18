@@ -215,23 +215,23 @@ private:
 	uint8_t	ManufacturerAccess(uint16_t cmd);
 
 	// internal variables
-	bool			_enabled;	///< true if we have successfully connected to battery
+	bool			_enabled{false};	///< true if we have successfully connected to battery
 	work_s			_work{};		///< work queue for scheduling reads
 
 	battery_status_s _last_report;	///< last published report, used for test()
 
-	orb_advert_t	_batt_topic;	///< uORB battery topic
-	orb_id_t		_batt_orb_id;	///< uORB battery topic ID
+	orb_advert_t	_batt_topic{nullptr};	///< uORB battery topic
+	orb_id_t		_batt_orb_id{nullptr};	///< uORB battery topic ID
 
-	uint64_t		_start_time;	///< system time we first attempt to communicate with battery
-	uint16_t		_batt_capacity;	///< battery's design capacity in mAh (0 means unknown)
-	uint16_t		_batt_startup_capacity;	///< battery's remaining capacity on startup
-	char           *_manufacturer_name;  ///< The name of the battery manufacturer
-	uint16_t		_cycle_count;	///< number of cycles the battery has experienced
-	uint16_t		_serial_number;		///< serial number register
-	float 			_crit_thr;	///< Critical battery threshold param
-	float 			_low_thr;	///< Low battery threshold param
-	float 			_emergency_thr;		///< Emergency battery threshold param
+	uint64_t		_start_time{0};	///< system time we first attempt to communicate with battery
+	uint16_t		_batt_capacity{0};	///< battery's design capacity in mAh (0 means unknown)
+	uint16_t		_batt_startup_capacity{0};	///< battery's remaining capacity on startup
+	char           *_manufacturer_name{nullptr};  ///< The name of the battery manufacturer
+	uint16_t		_cycle_count{0};	///< number of cycles the battery has experienced
+	uint16_t		_serial_number{0};		///< serial number register
+	float 			_crit_thr{0.0f};	///< Critical battery threshold param
+	float 			_low_thr{0.0f};	///< Low battery threshold param
+	float 			_emergency_thr{0.0f};		///< Emergency battery threshold param
 };
 
 namespace
@@ -248,19 +248,7 @@ int manufacture_date();
 int serial_number();
 
 BATT_SMBUS::BATT_SMBUS(int bus, uint16_t batt_smbus_addr) :
-	I2C("batt_smbus", "/dev/batt_smbus0", bus, batt_smbus_addr, 100000),
-	_enabled(false),
-	_batt_topic(nullptr),
-	_batt_orb_id(nullptr),
-	_start_time(0),
-	_batt_capacity(0),
-	_batt_startup_capacity(0),
-	_manufacturer_name(nullptr),
-	_cycle_count(0),
-	_serial_number(0),
-	_crit_thr(0.0f),
-	_low_thr(0.0f),
-	_emergency_thr(0.0f)
+	I2C("batt_smbus", "/dev/batt_smbus0", bus, batt_smbus_addr, 100000)
 {
 	// capture startup time
 	_start_time = hrt_absolute_time();

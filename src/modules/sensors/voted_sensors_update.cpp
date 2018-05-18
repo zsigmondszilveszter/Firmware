@@ -136,8 +136,8 @@ void VotedSensorsUpdate::parameters_update()
 	_board_rotation = board_rotation_offset * get_rot_matrix((enum Rotation)_parameters.board_rotation);
 
 	// initialze all mag rotations with the board rotation in case there is no calibration data available
-	for (int topic_instance = 0; topic_instance < MAG_COUNT_MAX; ++topic_instance) {
-		_mag_rotation[topic_instance] = _board_rotation;
+	for (auto &topic_instance : _mag_rotation) {
+		topic_instance = _board_rotation;
 	}
 
 	/* Load & apply the sensor calibrations.

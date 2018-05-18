@@ -138,8 +138,8 @@ int InputMavlinkROI::update_impl(unsigned int timeout_ms, ControlData **control_
 			_cur_roi_mode = vehicle_roi.mode;
 
 			//set all other control data fields to defaults
-			for (int i = 0; i < 3; ++i) {
-				_control_data.stabilize_axis[i] = false;
+			for (bool &stabilize_axi : _control_data.stabilize_axis) {
+				stabilize_axi = false;
 			}
 		}
 

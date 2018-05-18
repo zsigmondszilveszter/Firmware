@@ -104,25 +104,25 @@ protected:
 private:
 	char 				_port[20];
 	uint8_t _rotation;
-	float				_min_distance;
-	float				_max_distance;
-	int                 _conversion_interval;
+	float				_min_distance{0.30f};
+	float				_max_distance{40.0f};
+	int                 _conversion_interval{83334};
 	work_s				_work;
-	ringbuffer::RingBuffer		*_reports;
-	int				_measure_ticks;
-	bool				_collect_phase;
-	int				_fd;
+	ringbuffer::RingBuffer		*_reports{nullptr};
+	int				_measure_ticks{0};
+	bool				_collect_phase{false};
+	int				_fd{-1};
 	char				_linebuf[10];
-	unsigned			_linebuf_index;
-	enum SF0X_PARSE_STATE		_parse_state;
-	hrt_abstime			_last_read;
+	unsigned			_linebuf_index{0};
+	enum SF0X_PARSE_STATE		_parse_state {SF0X_PARSE_STATE0_UNSYNC};
+	hrt_abstime			_last_read{0};
 
-	int				_class_instance;
-	int				_orb_class_instance;
+	int				_class_instance{-1};
+	int				_orb_class_instance{-1};
 
-	orb_advert_t			_distance_sensor_topic;
+	orb_advert_t			_distance_sensor_topic{nullptr};
 
-	unsigned			_consecutive_fail_count;
+	unsigned			_consecutive_fail_count{0};
 
 	perf_counter_t			_sample_perf;
 	perf_counter_t			_comms_errors;
@@ -176,20 +176,6 @@ extern "C" __EXPORT int sf0x_main(int argc, char *argv[]);
 SF0X::SF0X(const char *port, uint8_t rotation) :
 	CDev("SF0X", RANGE_FINDER0_DEVICE_PATH),
 	_rotation(rotation),
-	_min_distance(0.30f),
-	_max_distance(40.0f),
-	_conversion_interval(83334),
-	_reports(nullptr),
-	_measure_ticks(0),
-	_collect_phase(false),
-	_fd(-1),
-	_linebuf_index(0),
-	_parse_state(SF0X_PARSE_STATE0_UNSYNC),
-	_last_read(0),
-	_class_instance(-1),
-	_orb_class_instance(-1),
-	_distance_sensor_topic(nullptr),
-	_consecutive_fail_count(0),
 	_sample_perf(perf_alloc(PC_ELAPSED, "sf0x_read")),
 	_comms_errors(perf_alloc(PC_COUNT, "sf0x_com_err"))
 {

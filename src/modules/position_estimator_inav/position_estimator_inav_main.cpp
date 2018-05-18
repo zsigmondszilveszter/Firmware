@@ -554,13 +554,13 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 
 			/* lidar alt estimation
 			 * update lidar separately, needed by terrain estimator */
-			for (unsigned i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
+			for (int distance_sensor_sub : distance_sensor_subs) {
 
-				orb_check(distance_sensor_subs[i], &updated);
+				orb_check(distance_sensor_sub, &updated);
 
 				if (updated) {
 
-					orb_copy(ORB_ID(distance_sensor), distance_sensor_subs[i], &lidar);
+					orb_copy(ORB_ID(distance_sensor), distance_sensor_sub, &lidar);
 
 					if (lidar.orientation != distance_sensor_s::ROTATION_DOWNWARD_FACING) {
 						updated = false;

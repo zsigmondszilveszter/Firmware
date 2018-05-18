@@ -127,12 +127,12 @@ void start(enum LL40LS_BUS busid, uint8_t rotation)
 		}
 
 	} else {
-		for (uint8_t i = 0; i < (sizeof(bus_options) / sizeof(bus_options[0])); i++) {
-			if (busid != LL40LS_BUS_I2C_ALL && busid != bus_options[i].busid) {
+		for (const auto &bus_option : bus_options) {
+			if (busid != LL40LS_BUS_I2C_ALL && busid != bus_option.busid) {
 				continue;
 			}
 
-			instance = new LidarLiteI2C(bus_options[i].busnum, bus_options[i].devname, rotation);
+			instance = new LidarLiteI2C(bus_option.busnum, bus_option.devname, rotation);
 
 			if (!instance) {
 				PX4_ERR("Failed to instantiate LidarLiteI2C");
@@ -143,7 +143,7 @@ void start(enum LL40LS_BUS busid, uint8_t rotation)
 				break;
 			}
 
-			PX4_ERR("failed to initialize LidarLiteI2C on busnum=%u", bus_options[i].busnum);
+			PX4_ERR("failed to initialize LidarLiteI2C on busnum=%u", bus_option.busnum);
 			delete instance;
 			instance = nullptr;
 		}

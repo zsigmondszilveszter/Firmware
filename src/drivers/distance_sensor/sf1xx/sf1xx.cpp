@@ -106,17 +106,17 @@ protected:
 
 private:
 	uint8_t _rotation;
-	float				_min_distance;
-	float				_max_distance;
-	int                             _conversion_interval;
+	float				_min_distance{-1.0f};
+	float				_max_distance{-1.0f};
+	int                             _conversion_interval{-1};
 	work_s				_work;
-	ringbuffer::RingBuffer  *_reports;
-	bool				_sensor_ok;
-	int				_measure_ticks;
-	int				_class_instance;
-	int				_orb_class_instance;
+	ringbuffer::RingBuffer  *_reports{nullptr};
+	bool				_sensor_ok{false};
+	int				_measure_ticks{0};
+	int				_class_instance{-1};
+	int				_orb_class_instance{-1};
 
-	orb_advert_t		_distance_sensor_topic;
+	orb_advert_t		_distance_sensor_topic{nullptr};
 
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_comms_errors;
@@ -181,15 +181,6 @@ extern "C" __EXPORT int sf1xx_main(int argc, char *argv[]);
 SF1XX::SF1XX(uint8_t rotation, int bus, int address) :
 	I2C("SF1XX", SF1XX_DEVICE_PATH, bus, address, 400000),
 	_rotation(rotation),
-	_min_distance(-1.0f),
-	_max_distance(-1.0f),
-	_conversion_interval(-1),
-	_reports(nullptr),
-	_sensor_ok(false),
-	_measure_ticks(0),
-	_class_instance(-1),
-	_orb_class_instance(-1),
-	_distance_sensor_topic(nullptr),
 	_sample_perf(perf_alloc(PC_ELAPSED, "sf1xx_read")),
 	_comms_errors(perf_alloc(PC_COUNT, "sf1xx_com_err"))
 

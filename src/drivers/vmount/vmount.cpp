@@ -406,10 +406,10 @@ static int vmount_thread_main(int argc, char *argv[])
 
 			if (updated) {
 				//re-init objects
-				for (int i = 0; i < input_objs_len_max; ++i) {
-					if (thread_data.input_objs[i]) {
-						delete (thread_data.input_objs[i]);
-						thread_data.input_objs[i] = nullptr;
+				for (auto & input_obj : thread_data.input_objs) {
+					if (input_obj) {
+						delete input_obj;
+						input_obj = nullptr;
 					}
 				}
 
@@ -429,10 +429,10 @@ static int vmount_thread_main(int argc, char *argv[])
 
 	orb_unsubscribe(parameter_update_sub);
 
-	for (int i = 0; i < input_objs_len_max; ++i) {
-		if (thread_data.input_objs[i]) {
-			delete (thread_data.input_objs[i]);
-			thread_data.input_objs[i] = nullptr;
+	for (auto & input_obj : thread_data.input_objs) {
+		if (input_obj) {
+			delete input_obj;
+			input_obj = nullptr;
 		}
 	}
 

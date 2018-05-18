@@ -410,8 +410,8 @@ bool MixerTest::mixerTest()
 	should_prearm = false;
 
 	/* simulate another orb_copy() from actuator controls */
-	for (unsigned i = 0; i < output_max; i++) {
-		actuator_controls[i] = 0.1f;
+	for (float &actuator_control : actuator_controls) {
+		actuator_control = 0.1f;
 	}
 
 	//PX4_INFO("ARMING TEST: STARTING RAMP");

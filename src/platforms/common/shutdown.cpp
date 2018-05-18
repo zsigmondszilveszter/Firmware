@@ -139,9 +139,9 @@ int px4_register_shutdown_hook(shutdown_hook_t hook)
 {
 	pthread_mutex_lock(&shutdown_mutex);
 
-	for (int i = 0; i < max_shutdown_hooks; ++i) {
-		if (!shutdown_hooks[i]) {
-			shutdown_hooks[i] = hook;
+	for (auto &shutdown_hook : shutdown_hooks) {
+		if (!shutdown_hook) {
+			shutdown_hook = hook;
 			pthread_mutex_unlock(&shutdown_mutex);
 			return 0;
 		}
@@ -155,9 +155,9 @@ int px4_unregister_shutdown_hook(shutdown_hook_t hook)
 {
 	pthread_mutex_lock(&shutdown_mutex);
 
-	for (int i = 0; i < max_shutdown_hooks; ++i) {
-		if (shutdown_hooks[i] == hook) {
-			shutdown_hooks[i] = nullptr;
+	for (auto &shutdown_hook : shutdown_hooks) {
+		if (shutdown_hook == hook) {
+			shutdown_hook = nullptr;
 			pthread_mutex_unlock(&shutdown_mutex);
 			return 0;
 		}
@@ -176,9 +176,9 @@ void shutdown_worker(void *arg)
 
 	pthread_mutex_lock(&shutdown_mutex);
 
-	for (int i = 0; i < max_shutdown_hooks; ++i) {
-		if (shutdown_hooks[i]) {
-			if (!shutdown_hooks[i]()) {
+	for (auto &shutdown_hook : shutdown_hooks) {
+		if (shutdown_hook) {
+			if (!shutdown_hook()) {
 				done = false;
 			}
 		}

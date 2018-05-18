@@ -1286,16 +1286,16 @@ task_main(int argc, char *argv[])
 	unsigned max_offset = g_key_offsets[DM_KEY_NUM_KEYS - 1] + (g_per_item_max_index[DM_KEY_NUM_KEYS - 1] *
 			      g_per_item_size[DM_KEY_NUM_KEYS - 1]);
 
-	for (unsigned i = 0; i < dm_number_of_funcs; i++) {
-		g_func_counts[i] = 0;
+	for (unsigned int &g_func_count : g_func_counts) {
+		g_func_count = 0;
 	}
 
 	/* Initialize the item type locks, for now only DM_KEY_MISSION_STATE & DM_KEY_FENCE_POINTS supports locking */
 	px4_sem_init(&g_sys_state_mutex_mission, 1, 1); /* Initially unlocked */
 	px4_sem_init(&g_sys_state_mutex_fence, 1, 1); /* Initially unlocked */
 
-	for (unsigned i = 0; i < DM_KEY_NUM_KEYS; i++) {
-		g_item_locks[i] = nullptr;
+	for (auto &g_item_lock : g_item_locks) {
+		g_item_lock = nullptr;
 	}
 
 	g_item_locks[DM_KEY_MISSION_STATE] = &g_sys_state_mutex_mission;

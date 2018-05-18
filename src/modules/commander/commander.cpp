@@ -230,7 +230,7 @@ static int power_button_state_notification_cb(board_power_button_state_notificat
 {
 	// Note: this can be called from IRQ handlers, so we publish a message that will be handled
 	// on the main thread of commander.
-	power_button_state_s button_state;
+	power_button_state_s button_state{};
 	button_state.timestamp = hrt_absolute_time();
 	int ret = PWR_BUTTON_RESPONSE_SHUT_DOWN_PENDING;
 
@@ -877,7 +877,7 @@ Commander::handle_command(vehicle_status_s *status_local, const vehicle_command_
 						home->valid_hpos = true;
 
 						// update local projection reference including altitude
-						struct map_projection_reference_s ref_pos;
+						struct map_projection_reference_s ref_pos{};
 						map_projection_init(&ref_pos, local_pos.ref_lat, local_pos.ref_lon);
 						map_projection_project(&ref_pos, lat, lon, &home->x, &home->y);
 						home->z = -(alt - local_pos.ref_alt);
@@ -1208,7 +1208,7 @@ Commander::run()
 	{
 		// we need to do an initial publication to make sure uORB allocates the buffer, which cannot happen
 		// in IRQ context.
-		power_button_state_s button_state;
+		power_button_state_s button_state{};
 		button_state.timestamp = 0;
 		button_state.event = 0xff;
 		power_button_state_pub = orb_advertise(ORB_ID(power_button_state), &button_state);
@@ -1311,8 +1311,7 @@ Commander::run()
 
 	/* Subscribe to geofence result topic */
 	int geofence_result_sub = orb_subscribe(ORB_ID(geofence_result));
-	struct geofence_result_s geofence_result;
-	memset(&geofence_result, 0, sizeof(geofence_result));
+	struct geofence_result_s geofence_result{};
 
 	/* Subscribe to manual control data */
 	int sp_man_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
@@ -1338,8 +1337,7 @@ Commander::run()
 
 	/* Subscribe to subsystem info topic */
 	int subsys_sub = orb_subscribe(ORB_ID(subsystem_info));
-	struct subsystem_info_s info;
-	memset(&info, 0, sizeof(info));
+	struct subsystem_info_s info{};
 
 	/* Subscribe to system power */
 	int system_power_sub = orb_subscribe(ORB_ID(system_power));
@@ -1355,7 +1353,7 @@ Commander::run()
 
 	/* subscribe to estimator status topic */
 	int estimator_status_sub = orb_subscribe(ORB_ID(estimator_status));
-	struct estimator_status_s estimator_status;
+	struct estimator_status_s estimator_status{};
 
 	/* class variables used to check for navigation failure after takeoff */
 	hrt_abstime time_at_takeoff = 0; // last time we were on the ground
@@ -1450,7 +1448,7 @@ Commander::run()
 
 #ifndef __PX4_QURT
 	// This is not supported by QURT (yet).
-	struct sched_param param;
+	struct sched_param param{};
 	(void)pthread_attr_getschedparam(&commander_low_prio_attr, &param);
 
 	/* low priority */
@@ -1474,7 +1472,7 @@ Commander::run()
 		if (params_updated || param_init_forced) {
 
 			/* parameters changed */
-			struct parameter_update_s param_changed;
+			struct parameter_update_s param_changed{};
 			orb_copy(ORB_ID(parameter_update), param_changed_sub, &param_changed);
 
 			updateParams();
@@ -1575,7 +1573,7 @@ Commander::run()
 		orb_check(power_button_state_sub, &updated);
 
 		if (updated) {
-			power_button_state_s button_state;
+			power_button_state_s button_state{};
 			orb_copy(ORB_ID(power_button_state), power_button_state_sub, &button_state);
 
 			if (button_state.event == power_button_state_s::PWR_BUTTON_STATE_REQUEST_SHUTDOWN) {
@@ -1964,7 +1962,7 @@ Commander::run()
 							mavlink_log_critical(&mavlink_log_pub, "SYSTEM DOES NOT SUPPORT SHUTDOWN");
 
 						} else {
-							while (1) { usleep(1); }
+							while (true) { usleep(1); }
 						}
 
 					} else {
@@ -2459,7 +2457,7 @@ Commander::run()
 		orb_check(cmd_sub, &updated);
 
 		if (updated) {
-			struct vehicle_command_s cmd;
+			struct vehicle_command_s cmd{};
 
 			/* got command */
 			orb_copy(ORB_ID(vehicle_command), cmd_sub, &cmd);
@@ -3713,7 +3711,7 @@ void *commander_low_prio_loop(void *arg)
 			continue;
 
 		} else if (pret != 0) {
-			struct vehicle_command_s cmd;
+			struct vehicle_command_s cmd{};
 
 			/* if we reach here, we have a valid command */
 			orb_copy(ORB_ID(vehicle_command), cmd_sub, &cmd);
@@ -3982,7 +3980,7 @@ int Commander::task_spawn(int argc, char *argv[])
 
 Commander *Commander::instantiate(int argc, char *argv[])
 {
-	Commander *instance = new Commander();
+	auto *instance = new Commander();
 
 	// XXX remove this once this is a class member
 	status = {};
@@ -4191,7 +4189,7 @@ void Commander::data_link_checks(int32_t highlatencydatalink_loss_timeout, int32
 			*status_changed = true;
 			mavlink_log_critical(&mavlink_log_pub, "LOW LATENCY DATA LINKS REGAINED, DEACTIVATING HIGH LATENCY LINK");
 
-			vehicle_command_s vehicle_cmd;
+			vehicle_command_s vehicle_cmd{};
 			vehicle_cmd.timestamp = hrt_absolute_time();
 			vehicle_cmd.command = vehicle_command_s::VEHICLE_CMD_CONTROL_HIGH_LATENCY;
 			vehicle_cmd.param1 = 0.0f;
@@ -4213,7 +4211,7 @@ void Commander::data_link_checks(int32_t highlatencydatalink_loss_timeout, int32
 			status.high_latency_data_link_active = true;
 			*status_changed = true;
 
-			vehicle_command_s vehicle_cmd;
+			vehicle_command_s vehicle_cmd{};
 			vehicle_cmd.timestamp = hrt_absolute_time();
 			vehicle_cmd.command = vehicle_command_s::VEHICLE_CMD_CONTROL_HIGH_LATENCY;
 			vehicle_cmd.param1 = 1.0f;
@@ -4222,9 +4220,9 @@ void Commander::data_link_checks(int32_t highlatencydatalink_loss_timeout, int32
 			vehicle_cmd.target_component = 0;
 
 			// set heartbeat to current time for high latency so that the first message can be transmitted
-			for (int i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
-				if (_telemetry[i].high_latency) {
-					_telemetry[i].last_heartbeat = hrt_absolute_time();
+			for (auto &t : _telemetry) {
+				if (t.high_latency) {
+					t.last_heartbeat = hrt_absolute_time();
 				}
 			}
 

@@ -537,9 +537,9 @@ Ekf2::~Ekf2()
 	orb_unsubscribe(_status_sub);
 	orb_unsubscribe(_vehicle_land_detected_sub);
 
-	for (unsigned i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
-		orb_unsubscribe(_range_finder_subs[i]);
-		_range_finder_subs[i] = -1;
+	for (int &_range_finder_sub : _range_finder_subs) {
+		orb_unsubscribe(_range_finder_sub);
+		_range_finder_sub = -1;
 	}
 }
 
@@ -1508,7 +1508,7 @@ const Vector3f Ekf2::get_vel_body_wind()
 
 Ekf2 *Ekf2::instantiate(int argc, char *argv[])
 {
-	Ekf2 *instance = new Ekf2();
+	auto *instance = new Ekf2();
 
 	if (instance) {
 		if (argc >= 2 && !strcmp(argv[1], "-r")) {

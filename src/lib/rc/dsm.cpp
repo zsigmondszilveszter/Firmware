@@ -199,13 +199,13 @@ dsm_guess_format(bool reset)
 	unsigned votes10 = 0;
 	unsigned votes11 = 0;
 
-	for (unsigned i = 0; i < (sizeof(masks) / sizeof(masks[0])); i++) {
+	for (unsigned int mask : masks) {
 
-		if (cs10 == masks[i]) {
+		if (cs10 == mask) {
 			votes10++;
 		}
 
-		if (cs11 == masks[i]) {
+		if (cs11 == mask) {
 			votes11++;
 		}
 	}
@@ -275,8 +275,8 @@ dsm_proto_init()
 	dsm_chan_count = 0;
 	dsm_decode_state = DSM_DECODE_STATE_DESYNC;
 
-	for (unsigned i = 0; i < DSM_MAX_CHANNEL_COUNT; i++) {
-		dsm_chan_buf[i] = 0;
+	for (unsigned short &i : dsm_chan_buf) {
+		i = 0;
 	}
 }
 

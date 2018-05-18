@@ -119,21 +119,21 @@ private:
 	float				_min_distance;
 	float				_max_distance;
 	work_s				_work;
-	ringbuffer::RingBuffer		*_reports;
-	bool				_sensor_ok;
-	int				_measure_ticks;
-	bool				_collect_phase;
-	int				_class_instance;
-	int				_orb_class_instance;
+	ringbuffer::RingBuffer		*_reports{nullptr};
+	bool				_sensor_ok{false};
+	int				_measure_ticks{0};
+	bool				_collect_phase{false};
+	int				_class_instance{-1};
+	int				_orb_class_instance{-1};
 
-	orb_advert_t		_distance_sensor_topic;
+	orb_advert_t		_distance_sensor_topic{nullptr};
 
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_comms_errors;
 
-	uint8_t				_cycle_counter;	/* counter in cycle to change i2c adresses */
-	int					_cycling_rate;	/* */
-	uint8_t				_index_counter;	/* temporary sonar i2c address */
+	uint8_t				_cycle_counter{0};	/* counter in cycle to change i2c adresses */
+	int					_cycling_rate{0};	/* */
+	uint8_t				_index_counter{0};	/* temporary sonar i2c address */
 	std::vector<uint8_t>	addr_ind; 	/* temp sonar i2c address vector */
 	std::vector<float>
 	_latest_sonar_measurements; /* vector to store latest sonar measurements in before writing to report */
@@ -199,19 +199,8 @@ SRF02::SRF02(uint8_t rotation, int bus, int address) :
 	_rotation(rotation),
 	_min_distance(SRF02_MIN_DISTANCE),
 	_max_distance(SRF02_MAX_DISTANCE),
-	_reports(nullptr),
-	_sensor_ok(false),
-	_measure_ticks(0),
-	_collect_phase(false),
-	_class_instance(-1),
-	_orb_class_instance(-1),
-	_distance_sensor_topic(nullptr),
 	_sample_perf(perf_alloc(PC_ELAPSED, "srf02_read")),
-	_comms_errors(perf_alloc(PC_COUNT, "srf02_com_err")),
-	_cycle_counter(0),	/* initialising counter for cycling function to zero */
-	_cycling_rate(0),	/* initialising cycling rate (which can differ depending on one sonar or multiple) */
-	_index_counter(0) 	/* initialising temp sonar i2c address to zero */
-
+	_comms_errors(perf_alloc(PC_COUNT, "srf02_com_err"))
 {
 	/* enable debug() calls */
 	_debug_enabled = false;
