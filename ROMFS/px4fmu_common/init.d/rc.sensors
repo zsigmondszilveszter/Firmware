@@ -65,7 +65,7 @@ then
 	mpu6000 -R 2 -T 20602 start
 
 	# Internal SPI bus mpu9250 is rotated 90 deg yaw
-	mpu9250 -R 2 start
+	mpu9250 start
 fi
 
 if ver hwcmp PX4FMU_V2
@@ -175,7 +175,7 @@ then
 	hmc5883 -C -T -X start
 
 	# Internal SPI bus mpu9250 is rotated 90 deg yaw
-	mpu9250 -R 2 start
+	mpu9250 start
 fi
 
 if ver hwcmp PX4FMU_V4
@@ -221,10 +221,9 @@ then
 	# Start either MPU9250 or BMI160. They are both connected to the same SPI bus and use the same
 	# chip select pin. There are different boards with either one of them and the WHO_AM_I register
 	# will prevent the incorrect driver from a successful initialization.
-
-	if mpu9250 -R 2 start
+	if mpu9250 start
 	then
-		# mpu9250 internal SPI bus mpu9250 is rotated 90 deg yaw
+		# mpu9250 internal SPI bus
 	else
 		# BMI160 internal SPI bus
 		bmi160 start
@@ -286,7 +285,7 @@ then
 	mpu6000 -R 2 -T 20602 start
 
 	# Internal SPI bus mpu9250
-	mpu9250 -R 2 start
+	mpu9250 start
 
 	# Internal SPI bus
 	lis3mdl -R 0 start

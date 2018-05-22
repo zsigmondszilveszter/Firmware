@@ -67,8 +67,6 @@
 #define AK8963_14BIT_ADC        0x00
 #define AK8963_RESET            0x01
 
-
-
 class MPU9250;
 
 #pragma pack(push, 1)
@@ -85,7 +83,6 @@ extern device::Device *AK8963_I2C_interface(int bus, bool external_bus);
 
 typedef device::Device *(*MPU9250_mag_constructor)(int, bool);
 
-
 /**
  * Helper class implementing the magnetometer driver node.
  */
@@ -95,8 +92,8 @@ public:
 	MPU9250_mag(MPU9250 *parent, device::Device *interface, const char *path);
 	~MPU9250_mag();
 
-	virtual ssize_t read(struct file *filp, char *buffer, size_t buflen);
-	virtual int ioctl(struct file *filp, int cmd, unsigned long arg);
+	virtual ssize_t read(device::file_t *filep, char *buffer, size_t buflen);
+	virtual int ioctl(device::file_t *filep, int cmd, unsigned long arg);
 	virtual int init();
 
 	void set_passthrough(uint8_t reg, uint8_t size, uint8_t *out = NULL);

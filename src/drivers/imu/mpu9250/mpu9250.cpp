@@ -44,31 +44,10 @@
 #include <px4_config.h>
 #include <ecl/geo/geo.h>
 
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <semaphore.h>
-#include <string.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <errno.h>
-#include <stdio.h>
-#include <math.h>
-#include <unistd.h>
-#include <getopt.h>
-
 #include <perf/perf_counter.h>
 #include <systemlib/err.h>
 #include <systemlib/conversions.h>
 #include <systemlib/px4_macros.h>
-
-#include <nuttx/arch.h>
-#include <nuttx/clock.h>
-
-#include <board_config.h>
-#include <drivers/drv_hrt.h>
 
 #include <drivers/device/spi.h>
 #include <drivers/device/ringbuffer.h>
@@ -112,8 +91,7 @@ const uint8_t MPU9250::_checked_registers[MPU9250_NUM_CHECKED_REGISTERS] = { MPU
 
 
 MPU9250::MPU9250(device::Device *interface, device::Device *mag_interface, const char *path_accel,
-		 const char *path_gyro, const char *path_mag,
-		 enum Rotation rotation) :
+		 const char *path_gyro, const char *path_mag, enum Rotation rotation) :
 	CDev("MPU9250", path_accel),
 	_interface(interface),
 	_gyro(new MPU9250_gyro(this, path_gyro)),
@@ -413,34 +391,24 @@ MPU9250::init()
 
 int MPU9250::reset()
 {
-	irqstate_t state;
-
 	/* When the mpu9250 starts from 0V the internal power on circuit
 	 * per the data sheet will require:
 	 *
 	 * Start-up time for register read/write From power-up Typ:11 max:100 ms
 	 *
 	 */
-
 	usleep(110000);
 
 	// Hold off sampling until done (100 MS will be shortened)
-	state = px4_enter_critical_section();
 	_reset_wait = hrt_absolute_time() + 100000;
-	px4_leave_critical_section(state);
 
-	int ret;
-
-	ret = reset_mpu();
+	int ret = reset_mpu();
 
 	if (ret == OK && _whoami == MPU_WHOAMI_9250) {
 		ret = _mag->ak8963_reset();
 	}
 
-
-	state = px4_enter_critical_section();
 	_reset_wait = hrt_absolute_time() + 10;
-	px4_leave_critical_section(state);
 
 	return ret;
 }
@@ -450,7 +418,6 @@ int MPU9250::reset_mpu()
 	write_reg(MPUREG_PWR_MGMT_1, BIT_H_RESET);
 	write_checked_reg(MPUREG_PWR_MGMT_1, MPU_CLK_SEL_AUTO);
 	write_checked_reg(MPUREG_PWR_MGMT_2, 0);
-
 
 	usleep(1000);
 
@@ -614,7 +581,7 @@ MPU9250::_set_dlpf_filter(uint16_t frequency_hz)
 }
 
 ssize_t
-MPU9250::read(struct file *filp, char *buffer, size_t buflen)
+MPU9250::read(device::file_t *filep, char *buffer, size_t buflen)
 {
 	unsigned count = buflen / sizeof(accel_report);
 
@@ -739,7 +706,7 @@ MPU9250::test_error()
 }
 
 ssize_t
-MPU9250::gyro_read(struct file *filp, char *buffer, size_t buflen)
+MPU9250::gyro_read(device::file_t *filep, char *buffer, size_t buflen)
 {
 	unsigned count = buflen / sizeof(gyro_report);
 
@@ -779,7 +746,7 @@ MPU9250::gyro_read(struct file *filp, char *buffer, size_t buflen)
 }
 
 int
-MPU9250::ioctl(struct file *filp, int cmd, unsigned long arg)
+MPU9250::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 {
 	switch (cmd) {
 
@@ -871,14 +838,14 @@ MPU9250::ioctl(struct file *filp, int cmd, unsigned long arg)
 				return -EINVAL;
 			}
 
-			irqstate_t flags = px4_enter_critical_section();
+			ATOMIC_ENTER;
 
 			if (!_accel_reports->resize(arg)) {
-				px4_leave_critical_section(flags);
+				ATOMIC_LEAVE;
 				return -ENOMEM;
 			}
 
-			px4_leave_critical_section(flags);
+			ATOMIC_LEAVE;
 
 			return OK;
 		}
@@ -925,7 +892,7 @@ MPU9250::ioctl(struct file *filp, int cmd, unsigned long arg)
 }
 
 int
-MPU9250::gyro_ioctl(struct file *filp, int cmd, unsigned long arg)
+MPU9250::gyro_ioctl(device::file_t *filp, int cmd, unsigned long arg)
 {
 	switch (cmd) {
 
@@ -941,14 +908,14 @@ MPU9250::gyro_ioctl(struct file *filp, int cmd, unsigned long arg)
 				return -EINVAL;
 			}
 
-			irqstate_t flags = px4_enter_critical_section();
+			ATOMIC_ENTER;
 
 			if (!_gyro_reports->resize(arg)) {
-				px4_leave_critical_section(flags);
+				ATOMIC_LEAVE;
 				return -ENOMEM;
 			}
 
-			px4_leave_critical_section(flags);
+			ATOMIC_LEAVE;
 
 			return OK;
 		}
@@ -1300,8 +1267,7 @@ MPU9250::measure()
 	/*
 	 * Fetch the full set of measurements from the MPU9250 in one pass.
 	 */
-	if (OK != _interface->read(MPU9250_SET_SPEED(MPUREG_INT_STATUS, MPU9250_HIGH_BUS_SPEED),
-				   (uint8_t *)&mpu_report,
+	if (OK != _interface->read(MPU9250_SET_SPEED(MPUREG_INT_STATUS, MPU9250_HIGH_BUS_SPEED), (uint8_t *)&mpu_report,
 				   sizeof(mpu_report))) {
 		perf_end(_sample_perf);
 		return;
@@ -1349,27 +1315,10 @@ MPU9250::measure()
 	}
 
 	/*
-	 * Swap axes and negate y
-	 */
-	int16_t accel_xt = report.accel_y;
-	int16_t accel_yt = ((report.accel_x == -32768) ? 32767 : -report.accel_x);
-
-	int16_t gyro_xt = report.gyro_y;
-	int16_t gyro_yt = ((report.gyro_x == -32768) ? 32767 : -report.gyro_x);
-
-	/*
-	 * Apply the swap
-	 */
-	report.accel_x = accel_xt;
-	report.accel_y = accel_yt;
-	report.gyro_x = gyro_xt;
-	report.gyro_y = gyro_yt;
-
-	/*
 	 * Report buffers.
 	 */
-	accel_report		arb;
-	gyro_report		grb;
+	accel_report arb;
+	gyro_report grb;
 
 	/*
 	 * Adjust and scale results to m/s^2.

@@ -88,10 +88,8 @@ MPU9250_gyro::~MPU9250_gyro()
 int
 MPU9250_gyro::init()
 {
-	int ret;
-
 	// do base class init
-	ret = CDev::init();
+	int ret = CDev::init();
 
 	/* if probe/setup failed, bail now */
 	if (ret != OK) {
@@ -111,13 +109,13 @@ MPU9250_gyro::parent_poll_notify()
 }
 
 ssize_t
-MPU9250_gyro::read(struct file *filp, char *buffer, size_t buflen)
+MPU9250_gyro::read(device::file_t *filp, char *buffer, size_t buflen)
 {
 	return _parent->gyro_read(filp, buffer, buflen);
 }
 
 int
-MPU9250_gyro::ioctl(struct file *filp, int cmd, unsigned long arg)
+MPU9250_gyro::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 {
 
 	switch (cmd) {

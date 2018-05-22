@@ -43,17 +43,6 @@
 
 #include <px4_config.h>
 
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
-#include <assert.h>
-#include <debug.h>
-#include <errno.h>
-#include <unistd.h>
-
-#include <arch/board/board.h>
-
 #include <drivers/device/spi.h>
 #include <drivers/drv_accel.h>
 #include <drivers/drv_device.h>
@@ -191,36 +180,27 @@ MPU9250_SPI::read(unsigned reg_speed, void *data, unsigned count)
 	 */
 	uint8_t cmd[3] = {0, 0, 0};
 
-	uint8_t *pbuff  =  count < sizeof(MPUReport) ? cmd : (uint8_t *) data ;
-
+	uint8_t *pbuff = count < sizeof(MPUReport) ? cmd : (uint8_t *) data;
 
 	if (count < sizeof(MPUReport))  {
-
 		/* add command */
-
 		count++;
 	}
 
 	set_bus_frequency(reg_speed);
 
 	/* Set command */
-
 	pbuff[0] = reg_speed | DIR_READ ;
 
 	/* Transfer the command and get the data */
-
 	int ret = transfer(pbuff, pbuff, count);
 
 	if (ret == OK && pbuff == &cmd[0]) {
-
 		/* Adjust the count back */
-
 		count--;
 
 		/* Return the data */
-
 		memcpy(data, &cmd[1], count);
-
 	}
 
 	return ret;

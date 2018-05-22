@@ -36,9 +36,6 @@
 #include <perf/perf_counter.h>
 #include <systemlib/conversions.h>
 
-#include <nuttx/wqueue.h>
-
-#include <board_config.h>
 #include <drivers/drv_hrt.h>
 
 #include <drivers/device/ringbuffer.h>
@@ -52,12 +49,9 @@
 #include "mag.h"
 #include "gyro.h"
 
-
-
 #if defined(PX4_I2C_OBDEV_MPU9250)
 #  define USE_I2C
 #endif
-
 
 // MPU 9250 registers
 #define MPUREG_WHOAMI			0x75
@@ -250,8 +244,8 @@ public:
 
 	virtual int		init();
 
-	virtual ssize_t		read(struct file *filp, char *buffer, size_t buflen);
-	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
+	virtual ssize_t		read(device::file_t *filep, char *buffer, size_t buflen);
+	virtual int		ioctl(device::file_t *filep, int cmd, unsigned long arg);
 
 	/**
 	 * Diagnostics - print some basic information about the driver.
@@ -271,8 +265,8 @@ protected:
 	friend class MPU9250_mag;
 	friend class MPU9250_gyro;
 
-	virtual ssize_t		gyro_read(struct file *filp, char *buffer, size_t buflen);
-	virtual int		gyro_ioctl(struct file *filp, int cmd, unsigned long arg);
+	virtual ssize_t		gyro_read(device::file_t *filep, char *buffer, size_t buflen);
+	virtual int		gyro_ioctl(device::file_t *filep, int cmd, unsigned long arg);
 
 private:
 	MPU9250_gyro	*_gyro;
@@ -405,9 +399,6 @@ private:
 #endif
 
 	bool is_i2c(void) { return !_use_hrt; }
-
-
-
 
 	/**
 	 * Static trampoline from the hrt_call context; because we don't have a

@@ -46,6 +46,7 @@ if (${OS} STREQUAL "nuttx")
 else()
 	list(APPEND SRCS_PLATFORM
 		posix/I2C.cpp
+		posix/SPI.cpp
 		posix/cdev_platform.cpp
 		posix/vfile.cpp
 	)

@@ -412,7 +412,6 @@ info(enum MPU9250_BUS busid)
 {
 	struct mpu9250_bus_option &bus = find_bus(busid);
 
-
 	if (bus.dev == nullptr) {
 		errx(1, "driver not running");
 	}
@@ -431,7 +430,6 @@ regdump(enum MPU9250_BUS busid)
 {
 	struct mpu9250_bus_option &bus = find_bus(busid);
 
-
 	if (bus.dev == nullptr) {
 		errx(1, "driver not running");
 	}
@@ -449,7 +447,6 @@ void
 testerror(enum MPU9250_BUS busid)
 {
 	struct mpu9250_bus_option &bus = find_bus(busid);
-
 
 	if (bus.dev == nullptr) {
 		errx(1, "driver not running");
@@ -471,7 +468,6 @@ usage()
 	PX4_INFO("    -S    (spi external bus)");
 	PX4_INFO("    -t    (spi internal bus, 2nd instance)");
 	PX4_INFO("    -R rotation");
-
 }
 
 } // namespace

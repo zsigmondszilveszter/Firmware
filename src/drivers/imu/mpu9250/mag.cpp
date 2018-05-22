@@ -43,14 +43,6 @@
 #include <px4_config.h>
 #include <px4_log.h>
 
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <stdio.h>
-
 #include <perf/perf_counter.h>
 
 #include <board_config.h>
@@ -207,17 +199,10 @@ MPU9250_mag::_measure(struct ak8963_regs data)
 	mrb.timestamp = hrt_absolute_time();
 	mrb.is_external = false;
 
-	/*
-	 * Align axes - note the accel & gryo are also re-aligned so this
-	 *              doesn't look obvious with the datasheet
-	 */
-	mrb.x_raw =  data.x;
-	mrb.y_raw = -data.y;
-	mrb.z_raw = -data.z;
-
-	float xraw_f =  data.x;
-	float yraw_f = -data.y;
-	float zraw_f = -data.z;
+	// Align axes
+	float xraw_f = mrb.x_raw = data.y;
+	float yraw_f = mrb.y_raw = data.x;
+	float zraw_f = mrb.z_raw = -data.z;
 
 	/* apply user specified rotation */
 	rotate_3f(_parent->_rotation, xraw_f, yraw_f, zraw_f);
@@ -240,13 +225,12 @@ MPU9250_mag::_measure(struct ak8963_regs data)
 	}
 
 	if (mag_notify && !(_pub_blocked)) {
-		/* publish it */
 		orb_publish(ORB_ID(sensor_mag), _mag_topic, &mrb);
 	}
 }
 
 ssize_t
-MPU9250_mag::read(struct file *filp, char *buffer, size_t buflen)
+MPU9250_mag::read(device::file_t *filep, char *buffer, size_t buflen)
 {
 	unsigned count = buflen / sizeof(mag_report);
 
@@ -289,7 +273,7 @@ MPU9250_mag::read(struct file *filp, char *buffer, size_t buflen)
 }
 
 int
-MPU9250_mag::ioctl(struct file *filp, int cmd, unsigned long arg)
+MPU9250_mag::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 {
 	switch (cmd) {
 
@@ -342,14 +326,14 @@ MPU9250_mag::ioctl(struct file *filp, int cmd, unsigned long arg)
 				return -EINVAL;
 			}
 
-			irqstate_t flags = px4_enter_critical_section();
+			ATOMIC_ENTER;
 
 			if (!_mag_reports->resize(arg)) {
-				px4_leave_critical_section(flags);
+				ATOMIC_LEAVE;
 				return -ENOMEM;
 			}
 
-			px4_leave_critical_section(flags);
+			ATOMIC_LEAVE;
 
 			return OK;
 		}
@@ -387,18 +371,6 @@ MPU9250_mag::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 	case MAGIOCSELFTEST:
 		return self_test();
-
-#ifdef MAGIOCSHWLOWPASS
-
-	case MAGIOCSHWLOWPASS:
-		return -EINVAL;
-#endif
-
-#ifdef MAGIOCGHWLOWPASS
-
-	case MAGIOCGHWLOWPASS:
-		return -EINVAL;
-#endif
 
 	default:
 		return (int)CDev::ioctl(filp, cmd, arg);
@@ -587,7 +559,7 @@ MPU9250_mag::ak8963_setup(void)
 		retries--;
 		PX4_ERR("AK8963: bad id %d retries %d", id, retries);
 		_parent->modify_reg(MPUREG_USER_CTRL, 0, BIT_I2C_MST_RST);
-		up_udelay(100);
+		usleep(100);
 	} while (retries > 0);
 
 	if (retries > 0) {
@@ -598,7 +570,7 @@ MPU9250_mag::ak8963_setup(void)
 			PX4_ERR("AK8963: failed to read adjustment data. Retries %d", retries);
 
 			_parent->modify_reg(MPUREG_USER_CTRL, 0, BIT_I2C_MST_RST);
-			up_udelay(100);
+			usleep(100);
 			ak8963_setup_master_i2c();
 			write_reg(AK8963REG_CNTL2, AK8963_RESET);
 		}
