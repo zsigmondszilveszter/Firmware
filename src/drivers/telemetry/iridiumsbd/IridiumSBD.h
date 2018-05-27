@@ -40,7 +40,7 @@
 #include <drivers/drv_hrt.h>
 
 #include <uORB/uORB.h>
-#include <uORB/topics/telemetry_status.h>
+#include <uORB/topics/mavlink_status.h>
 
 typedef enum {
 	SATCOM_OK = 0,

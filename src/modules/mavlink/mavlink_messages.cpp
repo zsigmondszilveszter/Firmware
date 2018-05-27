@@ -85,7 +85,6 @@
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/sensor_bias.h>
 #include <uORB/topics/tecs_status.h>
-#include <uORB/topics/telemetry_status.h>
 #include <uORB/topics/transponder_report.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>

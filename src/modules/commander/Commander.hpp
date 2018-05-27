@@ -147,10 +147,10 @@ private:
 	void mission_init();
 
 	/**
-	 * Update the telemetry status and the corresponding status variables.
-	 * Perform system checks when new telemetry link connected.
+	 * Update the mavlink status and the corresponding status variables.
+	 * Perform system checks when new mavlink link connected.
 	 */
-	void poll_telemetry_status();
+	void poll_mavlink_status();
 
 	/**
 	 * Checks the status of all available data links and handles switching between different system telemetry states.

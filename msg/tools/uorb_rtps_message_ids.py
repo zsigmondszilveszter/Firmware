@@ -71,7 +71,7 @@ msg_id_map = {
     'system_power': 66,
     'task_stack_info': 67,
     'tecs_status': 68,
-    'telemetry_status': 69,
+    'mavlink_status': 69,
     'test_motor': 70,
     'time_offset': 71,
     'transponder_report': 72,

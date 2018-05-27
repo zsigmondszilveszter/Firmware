@@ -64,9 +64,10 @@
 #endif
 
 #include <uORB/uORB.h>
+#include <uORB/topics/mavlink_status.h>
 #include <uORB/topics/mission.h>
 #include <uORB/topics/mission_result.h>
-#include <uORB/topics/telemetry_status.h>
+#include <uORB/topics/radio_status.h>
 
 #include "mavlink_bridge_header.h"
 #include "mavlink_orb_subscription.h"
@@ -80,6 +81,8 @@ enum Protocol {
 	UDP,
 	TCP,
 };
+
+using namespace time_literals;
 
 #define HASH_PARAM "_HASH_CHECK"
 
@@ -163,14 +166,14 @@ public:
 	const char *_device_name;
 
 	enum MAVLINK_MODE {
-		MAVLINK_MODE_NORMAL = 0,
-		MAVLINK_MODE_CUSTOM,
-		MAVLINK_MODE_ONBOARD,
-		MAVLINK_MODE_OSD,
-		MAVLINK_MODE_MAGIC,
-		MAVLINK_MODE_CONFIG,
-		MAVLINK_MODE_IRIDIUM,
-		MAVLINK_MODE_MINIMAL
+		MAVLINK_MODE_NORMAL = mavlink_status_s::MAVLINK_MODE_NORMAL,
+		MAVLINK_MODE_CUSTOM = mavlink_status_s::MAVLINK_MODE_CUSTOM,
+		MAVLINK_MODE_ONBOARD = mavlink_status_s::MAVLINK_MODE_ONBOARD,
+		MAVLINK_MODE_OSD = mavlink_status_s::MAVLINK_MODE_OSD,
+		MAVLINK_MODE_MAGIC = mavlink_status_s::MAVLINK_MODE_MAGIC,
+		MAVLINK_MODE_CONFIG = mavlink_status_s::MAVLINK_MODE_CONFIG,
+		MAVLINK_MODE_IRIDIUM = mavlink_status_s::MAVLINK_MODE_IRIDIUM,
+		MAVLINK_MODE_MINIMAL = mavlink_status_s::MAVLINK_MODE_MINIMAL,
 	};
 
 	enum BROADCAST_MODE {
@@ -224,15 +227,11 @@ public:
 
 	bool			get_forward_externalsp() { return _forward_externalsp; }
 
-	bool			get_flow_control_enabled() { return _flow_control_mode; }
+	bool			get_flow_control_enabled() { return (_flow_control_mode != FLOW_CONTROL_OFF); }
 
 	bool			get_forwarding_on() { return _forwarding_on; }
 
-	bool			get_config_link_on() { return _config_link_on; }
-
-	void			set_config_link_on(bool on) { _config_link_on = on; }
-
-	bool			is_connected() { return ((_rstatus.heartbeat_time > 0) && (hrt_absolute_time() - _rstatus.heartbeat_time < 3000000)); }
+	bool			is_connected() const { return ((_last_heartbeat > 0) && (hrt_elapsed_time(&_last_heartbeat) < 3_s)); }
 
 	bool			broadcast_enabled() { return _broadcast_mode > BROADCAST_MODE_OFF; }
 
@@ -377,7 +376,7 @@ public:
 
 	MavlinkStream 		*get_streams() const { return _streams; }
 
-	float			get_rate_mult();
+	float			get_rate_mult() const { return _tstatus.rate_mult; }
 
 	float			get_baudrate() { return _baudrate; }
 
@@ -413,10 +412,9 @@ public:
 	 */
 	void			count_rxbytes(unsigned n) { _bytes_rx += n; };
 
-	/**
-	 * Get the receive status of this MAVLink link
-	 */
-	struct telemetry_status_s	&get_rx_status() { return _rstatus; }
+	void				heartbeat_received() { _last_heartbeat = hrt_absolute_time(); }
+
+	void				update_radio_status(const radio_status_s &radio_status);
 
 	ringbuffer::RingBuffer	*get_logbuffer() { return &_logbuffer; }
 
@@ -449,8 +447,6 @@ public:
 
 	bool			is_usb_uart() { return _is_usb_uart; }
 
-	bool			accepting_commands() { return true; /* non-trivial side effects ((!_config_link_on) || (_mode == MAVLINK_MODE_CONFIG));*/ }
-
 	int			get_data_rate()		{ return _datarate; }
 	void			set_data_rate(int rate) { if (rate > 0) { _datarate = rate; } }
 
@@ -459,17 +455,20 @@ public:
 	/** get the Mavlink shell. Create a new one if there isn't one. It is *always* created via MavlinkReceiver thread.
 	 *  Returns nullptr if shell cannot be created */
 	MavlinkShell		*get_shell();
+
 	/** close the Mavlink shell if it is open */
 	void			close_shell();
 
 	/** get ulog streaming if active, nullptr otherwise */
 	MavlinkULog		*get_ulog_streaming() { return _mavlink_ulog; }
+
 	void			try_start_ulog_streaming(uint8_t target_system, uint8_t target_component)
 	{
 		if (_mavlink_ulog) { return; }
 
 		_mavlink_ulog = MavlinkULog::try_start(_datarate, 0.7f, target_system, target_component);
 	}
+
 	void			request_stop_ulog_streaming()
 	{
 		if (_mavlink_ulog) { _mavlink_ulog_stop_requested = true; }
@@ -493,7 +492,7 @@ public:
 	/**
 	 * Get the ping statistics of this MAVLink link
 	 */
-	struct ping_statistics_s &get_ping_statistics() { return _ping_stats; }
+	ping_statistics_s &get_ping_statistics() { return _ping_stats; }
 
 protected:
 	Mavlink			*next;
@@ -503,13 +502,18 @@ private:
 	bool			_transmitting_enabled;
 	bool			_transmitting_enabled_commanded;
 
-	orb_advert_t		_mavlink_log_pub;
+	orb_advert_t		_mavlink_log_pub{nullptr};
+	orb_advert_t		_mavlink_status_pub{nullptr};
+
 	bool			_task_running;
 	static bool		_boot_complete;
+
 	static constexpr unsigned MAVLINK_MAX_INSTANCES = 4;
 	static constexpr unsigned MAVLINK_MIN_INTERVAL = 1500;
 	static constexpr unsigned MAVLINK_MAX_INTERVAL = 10000;
+
 	static constexpr float MAVLINK_MIN_MULTIPLIER = 0.0005f;
+
 	mavlink_message_t _mavlink_buffer;
 	mavlink_status_t _mavlink_status;
 
@@ -548,8 +552,9 @@ private:
 	int			_baudrate;
 	int			_datarate;		///< data rate for normal streams (attitude, position, etc.)
 	int			_datarate_events;	///< data rate for params, waypoints, text messages
-	float			_rate_mult;
+
 	hrt_abstime		_last_hw_rate_timestamp;
+	float			_last_hw_rate_mult{1.0f};
 
 	/**
 	 * If the queue index is not at 0, the queue sending
@@ -571,13 +576,12 @@ private:
 	int32_t			_protocol_version_switch;
 	int32_t			_protocol_version;
 
-	unsigned		_bytes_tx;
-	unsigned		_bytes_txerr;
-	unsigned		_bytes_rx;
-	uint64_t		_bytes_timestamp;
-	float			_rate_tx;
-	float			_rate_txerr;
-	float			_rate_rx;
+	unsigned		_bytes_tx{0};
+	unsigned		_bytes_txerr{0};
+	unsigned		_bytes_rx{0};
+	uint64_t		_bytes_timestamp{0};
+
+	uint64_t		_last_heartbeat{0};
 
 #ifdef __PX4_POSIX
 	struct sockaddr_in _myaddr;
@@ -590,14 +594,14 @@ private:
 	uint8_t _network_buf[MAVLINK_MAX_PACKET_LEN];
 	unsigned _network_buf_len;
 #endif
-	int _socket_fd;
+	int _socket_fd {-1};
 	Protocol	_protocol;
+
 	unsigned short _network_port;
 	unsigned short _remote_port;
 
-	struct telemetry_status_s	_rstatus;			///< receive status
-
-	struct ping_statistics_s	_ping_stats;		///< ping statistics
+	mavlink_status_s	_tstatus{};			///< receive status
+	ping_statistics_s	_ping_stats{};		///< ping statistics
 
 	struct mavlink_message_buffer {
 		int write_ptr;
@@ -624,7 +628,6 @@ private:
 	param_t			_param_broadcast;
 
 	unsigned		_system_type;
-	static bool		_config_link_on;
 
 	perf_counter_t		_loop_perf;			/**< loop performance counter */
 	perf_counter_t		_txerr_perf;			/**< TX error counter */

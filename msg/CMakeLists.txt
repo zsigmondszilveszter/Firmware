@@ -83,6 +83,7 @@ set(msg_files
 	power_button_state.msg
 	pwm_input.msg
 	qshell_req.msg
+	radio_status.msg
 	rate_ctrl_status.msg
 	rc_channels.msg
 	rc_parameter_map.msg
@@ -102,7 +103,7 @@ set(msg_files
 	system_power.msg
 	task_stack_info.msg
 	tecs_status.msg
-	telemetry_status.msg
+	mavlink_status.msg
 	test_motor.msg
 	timesync_status.msg
 	transponder_report.msg

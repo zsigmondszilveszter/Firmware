@@ -85,7 +85,7 @@
 #include <uORB/topics/airspeed.h>
 #include <uORB/topics/rc_channels.h>
 #include <uORB/topics/esc_status.h>
-#include <uORB/topics/telemetry_status.h>
+#include <uORB/topics/mavlink_status.h>
 #include <uORB/topics/distance_sensor.h>
 #include <uORB/topics/estimator_status.h>
 #include <uORB/topics/tecs_status.h>
@@ -1180,7 +1180,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 		struct airspeed_s airspeed;
 		struct esc_status_s esc;
 		struct battery_status_s battery;
-		struct telemetry_status_s telemetry;
+		struct mavlink_status_s telemetry;
 		struct distance_sensor_s distance_sensor;
 		struct estimator_status_s estimator_status;
 		struct tecs_status_s tecs_status;
@@ -1945,16 +1945,16 @@ int sdlog2_thread_main(int argc, char *argv[])
 
 			/* --- TELEMETRY --- */
 			for (unsigned i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
-				if (copy_if_updated_multi(ORB_ID(telemetry_status), i, &subs.telemetry_subs[i], &buf.telemetry)) {
+				if (copy_if_updated_multi(ORB_ID(mavlink_status), i, &subs.telemetry_subs[i], &buf.telemetry)) {
 					log_msg.msg_type = LOG_TEL0_MSG + i;
-					log_msg.body.log_TEL.rssi = buf.telemetry.rssi;
-					log_msg.body.log_TEL.remote_rssi = buf.telemetry.remote_rssi;
-					log_msg.body.log_TEL.noise = buf.telemetry.noise;
-					log_msg.body.log_TEL.remote_noise = buf.telemetry.remote_noise;
-					log_msg.body.log_TEL.rxerrors = buf.telemetry.rxerrors;
-					log_msg.body.log_TEL.fixed = buf.telemetry.fixed;
-					log_msg.body.log_TEL.txbuf = buf.telemetry.txbuf;
-					log_msg.body.log_TEL.heartbeat_time = buf.telemetry.heartbeat_time;
+					//log_msg.body.log_TEL.rssi = buf.telemetry.rssi;
+					//log_msg.body.log_TEL.remote_rssi = buf.telemetry.remote_rssi;
+					//log_msg.body.log_TEL.noise = buf.telemetry.noise;
+					//log_msg.body.log_TEL.remote_noise = buf.telemetry.remote_noise;
+					//log_msg.body.log_TEL.rxerrors = buf.telemetry.rxerrors;
+					//log_msg.body.log_TEL.fixed = buf.telemetry.fixed;
+					//log_msg.body.log_TEL.txbuf = buf.telemetry.txbuf;
+					//log_msg.body.log_TEL.heartbeat_time = buf.telemetry.heartbeat_time;
 					LOGBUFFER_WRITE_AND_COUNT(TEL);
 				}
 			}

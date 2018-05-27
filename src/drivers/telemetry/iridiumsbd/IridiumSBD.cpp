@@ -955,23 +955,23 @@ pollevent_t IridiumSBD::poll_state(struct file *filp)
 void IridiumSBD::publish_telemetry_status()
 {
 	// publish telemetry status for logger
-	struct telemetry_status_s tstatus = {};
+	//mavlink_status_s tstatus = {};
 
-	tstatus.timestamp = hrt_absolute_time();
-	tstatus.telem_time = tstatus.timestamp;
-	tstatus.type = telemetry_status_s::TELEMETRY_STATUS_RADIO_TYPE_IRIDIUM;
-	tstatus.rssi = _signal_quality;
-	tstatus.txbuf = ceil(100.0f * (float)_tx_buf_write_idx / SATCOM_TX_BUF_LEN);
-	tstatus.heartbeat_time = _last_heartbeat;
-	tstatus.rxerrors = _failed_sbd_sessions;
+	//tstatus.timestamp = hrt_absolute_time();
+	//tstatus.telem_time = tstatus.timestamp;
+	//tstatus.type = mavlink_status_s::TELEMETRY_STATUS_RADIO_TYPE_IRIDIUM;
+	//tstatus.rssi = _signal_quality;
+	//tstatus.txbuf = ceil(100.0f * (float)_tx_buf_write_idx / SATCOM_TX_BUF_LEN);
+	//tstatus.heartbeat_time = _last_heartbeat;
+	//tstatus.rxerrors = _failed_sbd_sessions;
 
-	if (_telemetry_status_pub == nullptr) {
-		int multi_instance;
-		_telemetry_status_pub = orb_advertise_multi(ORB_ID(telemetry_status), &tstatus, &multi_instance, ORB_PRIO_LOW);
-
-	} else {
-		orb_publish(ORB_ID(telemetry_status), _telemetry_status_pub, &tstatus);
-	}
+//	if (_telemetry_status_pub == nullptr) {
+//		int multi_instance;
+//		_telemetry_status_pub = orb_advertise_multi(ORB_ID(telemetry_status), &tstatus, &multi_instance, ORB_PRIO_LOW);
+//
+//	} else {
+//		orb_publish(ORB_ID(mavlink_status), _telemetry_status_pub, &tstatus);
+//	}
 }
 
 int	IridiumSBD::open_first(struct file *filep)

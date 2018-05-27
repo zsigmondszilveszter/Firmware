@@ -93,6 +93,7 @@
 #include <uORB/topics/home_position.h>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/mavlink_log.h>
+#include <uORB/topics/mavlink_status.h>
 #include <uORB/topics/mission.h>
 #include <uORB/topics/mission_result.h>
 #include <uORB/topics/offboard_control_mode.h>
@@ -101,7 +102,6 @@
 #include <uORB/topics/safety.h>
 #include <uORB/topics/subsystem_info.h>
 #include <uORB/topics/system_power.h>
-#include <uORB/topics/telemetry_status.h>
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_command_ack.h>
 #include <uORB/topics/vehicle_global_position.h>
@@ -1627,8 +1627,8 @@ Commander::run()
 			}
 		}
 
-		// poll the telemetry status
-		poll_telemetry_status();
+		// poll the mavlink telemetry status
+		poll_mavlink_status();
 
 		orb_check(system_power_sub, &updated);
 
@@ -4038,21 +4038,21 @@ bool Commander::preflight_check(bool report)
 	return success;
 }
 
-void Commander::poll_telemetry_status()
+void Commander::poll_mavlink_status()
 {
 	bool updated = false;
 
 	for (int i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
 
 		if (_telemetry[i].subscriber < 0) {
-			_telemetry[i].subscriber = orb_subscribe_multi(ORB_ID(telemetry_status), i);
+			_telemetry[i].subscriber = orb_subscribe_multi(ORB_ID(mavlink_status), i);
 		}
 
 		orb_check(_telemetry[i].subscriber, &updated);
 
 		if (updated) {
-			telemetry_status_s telemetry = {};
-			orb_copy(ORB_ID(telemetry_status), _telemetry[i].subscriber, &telemetry);
+			mavlink_status_s telemetry = {};
+			orb_copy(ORB_ID(mavlink_status), _telemetry[i].subscriber, &telemetry);
 
 			/* perform system checks when new telemetry link connected */
 			if (/* we first connect a link or re-connect a link after loosing it or haven't yet reported anything */
@@ -4081,17 +4081,12 @@ void Commander::poll_telemetry_status()
 			}
 
 			/* set (and don't reset) telemetry via USB as active once a MAVLink connection is up */
-			if (telemetry.type == telemetry_status_s::TELEMETRY_STATUS_RADIO_TYPE_USB) {
+			if (telemetry.link_type == mavlink_status_s::TYPE_USB) {
 				status_flags.usb_connected = true;
 			}
 
 			/* set latency type of the telemetry connection */
-			if (telemetry.type == telemetry_status_s::TELEMETRY_STATUS_RADIO_TYPE_IRIDIUM) {
-				_telemetry[i].high_latency = true;
-
-			} else {
-				_telemetry[i].high_latency = false;
-			}
+			_telemetry[i].high_latency = (telemetry.link_type == mavlink_status_s::TYPE_IRIDIUM);
 
 			if (telemetry.heartbeat_time > 0 && (_telemetry[i].last_heartbeat < telemetry.heartbeat_time)) {
 				_telemetry[i].last_heartbeat = telemetry.heartbeat_time;
