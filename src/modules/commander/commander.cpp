@@ -1092,63 +1092,85 @@ Commander::handle_command(vehicle_status_s *status_local, const vehicle_command_
 bool
 Commander::set_home_position(orb_advert_t &homePub, home_position_s &home, bool set_alt_only_to_lpos_ref)
 {
-	const vehicle_local_position_s &localPosition = _local_position_sub.get();
-	const vehicle_global_position_s &globalPosition = _global_position_sub.get();
+	home_position_s home_new = {};
+
+	const vehicle_local_position_s &lpos = _local_position_sub.get();
+	const vehicle_global_position_s &gpos = _global_position_sub.get();
 
 	if (!set_alt_only_to_lpos_ref) {
-		//Need global and local position fix to be able to set home
-		if (!status_flags.condition_global_position_valid || !status_flags.condition_local_position_valid) {
-			return false;
+
+		if (status_flags.condition_local_altitude_valid
+			&& status_flags.condition_local_position_valid
+			&& (lpos.eph <= _home_eph_threshold.get())
+			&& (lpos.epv <= _home_epv_threshold.get())) {
+
+			// set local home position
+			home_new.x = lpos.x;
+			home_new.y = lpos.y;
+			home_new.z = lpos.z;
+			home_new.valid_local = true;
+
+		} else {
+			home_new.valid_local = false;
+			home_new.x = NAN;
+			home_new.y = NAN;
+			home_new.z = NAN;
 		}
 
-		//Ensure that the GPS accuracy is good enough for intializing home
-		if (globalPosition.eph > _home_eph_threshold.get() || globalPosition.epv > _home_epv_threshold.get()) {
-			return false;
+		if (status_flags.condition_global_position_valid
+			&& (gpos.eph > _home_eph_threshold.get())
+			&& (gpos.epv > _home_epv_threshold.get())
+		) {
+			// Set global home position
+			home_new.lat = gpos.lat;
+			home_new.lon = gpos.lon;
+			home_new.alt = gpos.alt;
+			home_new.valid_global = true;
+		} else {
+			home_new.valid_global = false;
+			home_new.lat = NAN;
+			home_new.lon = NAN;
 		}
 
-		// Set home position
-		home.lat = globalPosition.lat;
-		home.lon = globalPosition.lon;
-		home.valid_hpos = true;
-
-		home.alt = globalPosition.alt;
-		home.valid_alt = true;
-
-		home.x = localPosition.x;
-		home.y = localPosition.y;
-		home.z = localPosition.z;
-
-		home.yaw = localPosition.yaw;
+		home_new.valid_alt = true;
+		home_new.yaw = lpos.yaw;
 
 		//Play tune first time we initialize HOME
 		if (!status_flags.condition_home_position_valid) {
 			tune_home_set(true);
+
+			/* mark home position as set */
+			status_flags.condition_home_position_valid = true;
 		}
 
-		/* mark home position as set */
-		status_flags.condition_home_position_valid = true;
-
-	} else if (!home.valid_alt && localPosition.z_global) {
+	} else if (!home.valid_alt && lpos.z_global) {
 		// handle special case where we are setting only altitude using local position reference
-		home.alt = localPosition.ref_alt;
-		home.valid_alt = true;
+		home_new.alt = lpos.ref_alt;
+		home_new.z = lpos.z;
+		home_new.valid_alt = true;
 
 	} else {
 		return false;
 	}
 
-	home.timestamp = hrt_absolute_time();
-	home.manual_home = false;
+	if (home_new.valid_local || home_new.valid_global) {
+		home_new.manual_home = false;
+		home_new.timestamp = hrt_absolute_time();
 
-	/* announce new home position */
-	if (homePub != nullptr) {
-		orb_publish(ORB_ID(home_position), homePub, &home);
+		/* announce new home position */
+		if (homePub != nullptr) {
+			orb_publish(ORB_ID(home_position), homePub, &home_new);
 
-	} else {
-		homePub = orb_advertise(ORB_ID(home_position), &home);
+		} else {
+			homePub = orb_advertise(ORB_ID(home_position), &home_new);
+		}
+
+		home = home_new;
+
+		return true;
 	}
 
-	return true;
+	return false;
 }
 
 void
@@ -2578,7 +2600,6 @@ Commander::run()
 			 * use has commenced after takeoff. */
 			if (!_home.valid_alt && local_position.z_global) {
 				set_home_position(home_pub, _home, true);
-
 			}
 		}
 

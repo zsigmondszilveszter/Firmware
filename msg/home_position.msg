@@ -13,4 +13,7 @@ float32 yaw				# Yaw angle in radians
 bool valid_alt		# true when the altitude has been set
 bool valid_hpos		# true when the latitude and longitude have been set
 
+bool valid_local
+bool valid_global
+
 bool manual_home	# true when home position was set manually
