@@ -1096,8 +1096,8 @@ void Ekf2::run()
 
 			if (ekf_origin_valid && (origin_time > lpos.ref_timestamp)) {
 				lpos.ref_timestamp = origin_time;
-				lpos.ref_lat = ekf_origin.lat_rad * 180.0 / M_PI; // Reference point latitude in degrees
-				lpos.ref_lon = ekf_origin.lon_rad * 180.0 / M_PI; // Reference point longitude in degrees
+				lpos.ref_lat = math::degrees(ekf_origin.lat_rad); // Reference point latitude in degrees
+				lpos.ref_lon = math::degrees(ekf_origin.lon_rad); // Reference point longitude in degrees
 			}
 
 			// The rotation of the tangent plane vs. geographical north
