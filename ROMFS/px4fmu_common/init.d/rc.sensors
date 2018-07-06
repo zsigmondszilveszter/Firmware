@@ -32,7 +32,7 @@ else
 	ms5611 -S start
 
 	# Internal SPI (auto detect ms5611 or ms5607)
-	ms5611 -T 0 -s start
+	#ms5611 -T 0 -s start
 
 	# Blacksheep telemetry
 	bst start
@@ -327,6 +327,8 @@ then
 
 	# Possible internal compass
 	ist8310 -C -b 5 start
+
+	ms5611 start -X -T 5607
 fi
 
 if ver hwcmp AEROCORE2
@@ -353,7 +355,7 @@ then
 		then
 			ms5525_airspeed start -b 2
 		else
-			ms5525_airspeed start -a
+			#ms5525_airspeed start -a
 		fi
 
 		ms4525_airspeed start -a
