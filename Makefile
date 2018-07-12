@@ -284,7 +284,9 @@ format:
 
 # Testing
 # --------------------------------------------------------------------
-.PHONY: tests tests_coverage tests_mission tests_mission_coverage tests_offboard rostest python_coverage
+.PHONY: tests tests_coverage tests_mission tests_mission_coverage tests_offboard rostest python_coverage tests_avoidance
+
+>>>>>>> Makefile: add tests_avoidance target
 
 tests:
 	@$(MAKE) --no-print-directory posix_sitl_default test_results \
@@ -322,6 +324,10 @@ python_coverage:
 	#@$(PX4_MAKE) -C $(SRC_DIR)/build/python_coverage module_documentation # TODO: fix within coverage.py
 	@coverage combine `find . -name .coverage\*`
 	@coverage report -m
+
+tests_avoidance:
+	@$(SRC_DIR)/test/rostest_avoidance_run.sh mavros_posix_test_avoidance.test
+
 
 # static analyzers (scan-build, clang-tidy, cppcheck)
 # --------------------------------------------------------------------
