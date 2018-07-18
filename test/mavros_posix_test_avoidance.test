@@ -8,7 +8,7 @@
     <arg name="vehicle" default="iris"/>
     <arg name="rcS" default="$(find px4)/posix-configs/SITL/init/$(arg est)/$(arg vehicle)"/>
     <arg name="headless" default="false"/>
-    <arg name="gui" default="true"/>
+    <arg name="gui" default="false"/>
     <arg name="ns" default="/"/>
     <arg name="model" default="iris"/>
 
@@ -50,7 +50,7 @@
           args="0 0 0 -1.57 0 -1.57 fcu camera_link 10"/>
 
     <!-- Launch Local Planner -->
-    <node name="local_planner_node" pkg="local_planner" type="local_planner_node" output="screen">
+    <node name="local_planner_node" pkg="local_planner" type="local_planner_node">
         <param name="goal_x_param" value="17" />
         <param name="goal_y_param" value="15"/>
         <param name="goal_z_param" value="3" />
