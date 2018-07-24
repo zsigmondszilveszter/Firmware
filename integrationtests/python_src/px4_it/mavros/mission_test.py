@@ -254,7 +254,7 @@ class MavrosMissionTest(MavrosTestCommon):
         # push waypoints to FCU and start mission
         self.send_wps(wps, 30)
         self.log_topic_vars()
-        self.set_mode("AUTO.MISSION", 5)
+        self.set_mode("AUTO.MISSION", 10)
         self.set_arm(True, 5)
 
         rospy.loginfo("run mission {0}".format(self.mission_name))
