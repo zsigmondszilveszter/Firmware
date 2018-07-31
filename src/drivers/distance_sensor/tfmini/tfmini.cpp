@@ -60,7 +60,6 @@
 #include <termios.h>
 
 #include <perf/perf_counter.h>
-#include <systemlib/err.h>
 
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_range_finder.h>
@@ -73,6 +72,8 @@
 #include <board_config.h>
 
 #include "tfmini_parser.h"
+
+using namespace time_literals;
 
 /* Configuration Constants */
 
@@ -98,27 +99,35 @@ public:
 
 private:
 	char                     _port[20];
-	uint8_t                  _rotation;
-	float                    _min_distance;
-	float                    _max_distance;
-	int                      _conversion_interval;
-	work_s                   _work;
-	ringbuffer::RingBuffer  *_reports;
-	int                      _measure_ticks;
-	bool                     _collect_phase;
-	int                      _fd;
-	char                     _linebuf[10];
-	unsigned                 _linebuf_index;
-	enum TFMINI_PARSE_STATE  _parse_state;
 
-	hrt_abstime              _last_read;
+	const uint8_t            _rotation;
 
-	int                      _class_instance;
-	int                      _orb_class_instance;
+	float                    _min_distance{0.30f};
+	float                    _max_distance{12.0f};
 
-	orb_advert_t             _distance_sensor_topic;
+	int                      _conversion_interval{10000};
 
-	unsigned                 _consecutive_fail_count;
+	work_s                   _work{};
+
+	ringbuffer::RingBuffer  *_reports{nullptr};
+
+	int                      _measure_ticks{0};
+	bool                     _collect_phase{false};
+	int                      _fd{-1};
+
+	char                     _linebuf[10] {};
+	unsigned                 _linebuf_index{0};
+
+	enum TFMINI_PARSE_STATE  _parse_state {TFMINI_PARSE_STATE0_UNSYNC};
+
+	hrt_abstime              _last_read{0};
+
+	int                      _class_instance{-1};
+	int                      _orb_class_instance{-1};
+
+	orb_advert_t             _distance_sensor_topic{nullptr};
+
+	unsigned                 _consecutive_fail_count{0};
 
 	perf_counter_t           _sample_perf;
 	perf_counter_t           _comms_errors;
@@ -141,10 +150,11 @@ private:
 	* range to be brought in at all, otherwise it will use the defaults TFMINI_MIN_DISTANCE
 	* and TFMINI_MAX_DISTANCE
 	*/
-	void				set_minimum_distance(float min);
-	void				set_maximum_distance(float max);
-	float				get_minimum_distance();
-	float				get_maximum_distance();
+	void				set_minimum_distance(float min) { _min_distance = min; }
+	void				set_maximum_distance(float max) { _max_distance = max; }
+
+	float				get_minimum_distance() const { return _min_distance; }
+	float				get_maximum_distance() const { return _max_distance; }
 
 	/**
 	* Perform a poll cycle; collect from the previous measurement
@@ -161,7 +171,6 @@ private:
 	*/
 	static void			cycle_trampoline(void *arg);
 
-
 };
 
 /*
@@ -172,33 +181,14 @@ extern "C" __EXPORT int tfmini_main(int argc, char *argv[]);
 TFMINI::TFMINI(const char *port, uint8_t rotation) :
 	CDev("tfmini", RANGE_FINDER0_DEVICE_PATH),
 	_rotation(rotation),
-	_min_distance(0.30f),
-	_max_distance(12.0f),
-	_conversion_interval(10000),
-	_reports(nullptr),
-	_measure_ticks(0),
-	_collect_phase(false),
-	_fd(-1),
-	_linebuf_index(0),
-	_parse_state(TFMINI_PARSE_STATE0_UNSYNC),
-	_last_read(0),
-	_class_instance(-1),
-	_orb_class_instance(-1),
-	_distance_sensor_topic(nullptr),
-	_consecutive_fail_count(0),
 	_sample_perf(perf_alloc(PC_ELAPSED, "tfmini_read")),
 	_comms_errors(perf_alloc(PC_COUNT, "tfmini_com_err"))
 {
 	/* store port name */
 	strncpy(_port, port, sizeof(_port));
+
 	/* enforce null termination */
 	_port[sizeof(_port) - 1] = '\0';
-
-	// disable debug() calls
-	_debug_enabled = false;
-
-	// work_cancel in the dtor will explode if we don't do this...
-	memset(&_work, 0, sizeof(_work));
 }
 
 TFMINI::~TFMINI()
@@ -222,7 +212,7 @@ TFMINI::~TFMINI()
 int
 TFMINI::init()
 {
-	int32_t hw_model;
+	int32_t hw_model = 0;
 	param_get(param_find("SENS_EN_TFMINI"), &hw_model);
 
 	switch (hw_model) {
@@ -233,7 +223,7 @@ TFMINI::init()
 	case 1: /* TFMINI (12m, 100 Hz)*/
 		_min_distance = 0.3f;
 		_max_distance = 12.0f;
-		_conversion_interval =	10000;
+		_conversion_interval = 10000;
 		break;
 
 	default:
@@ -250,7 +240,7 @@ TFMINI::init()
 		_fd = ::open(_port, O_RDWR | O_NOCTTY | O_SYNC);
 
 		if (_fd < 0) {
-			warnx("Error opening fd");
+			PX4_ERR("Error opening fd");
 			return -1;
 		}
 
@@ -268,19 +258,19 @@ TFMINI::init()
 
 		/* set baud rate */
 		if ((termios_state = cfsetispeed(&uart_config, speed)) < 0) {
-			warnx("ERR CFG: %d ISPD", termios_state);
+			PX4_ERR("CFG: %d ISPD", termios_state);
 			ret = -1;
 			break;
 		}
 
 		if ((termios_state = cfsetospeed(&uart_config, speed)) < 0) {
-			warnx("ERR CFG: %d OSPD\n", termios_state);
+			PX4_ERR("CFG: %d OSPD\n", termios_state);
 			ret = -1;
 			break;
 		}
 
 		if ((termios_state = tcsetattr(_fd, TCSANOW, &uart_config)) < 0) {
-			warnx("ERR baud %d ATTR", termios_state);
+			PX4_ERR("baud %d ATTR", termios_state);
 			ret = -1;
 			break;
 		}
@@ -302,7 +292,7 @@ TFMINI::init()
 		uart_config.c_cc[VTIME] = 1;
 
 		if (_fd < 0) {
-			warnx("FAIL: laser fd");
+			PX4_ERR("fd < 0");
 			ret = -1;
 			break;
 		}
@@ -316,7 +306,7 @@ TFMINI::init()
 		_reports = new ringbuffer::RingBuffer(2, sizeof(distance_sensor_s));
 
 		if (_reports == nullptr) {
-			warnx("mem err");
+			PX4_ERR("mem err");
 			ret = -1;
 			break;
 		}
@@ -340,30 +330,6 @@ TFMINI::init()
 	_fd = -1;
 
 	return ret;
-}
-
-void
-TFMINI::set_minimum_distance(float min)
-{
-	_min_distance = min;
-}
-
-void
-TFMINI::set_maximum_distance(float max)
-{
-	_max_distance = max;
-}
-
-float
-TFMINI::get_minimum_distance()
-{
-	return _min_distance;
-}
-
-float
-TFMINI::get_maximum_distance()
-{
-	return _max_distance;
 }
 
 int
@@ -523,8 +489,6 @@ TFMINI::read(device::file_t *filp, char *buffer, size_t buflen)
 int
 TFMINI::collect()
 {
-	int	ret;
-
 	perf_begin(_sample_perf);
 
 	/* clear buffer if last read was too long ago */
@@ -535,7 +499,7 @@ TFMINI::collect()
 	unsigned readlen = sizeof(readbuf) - 1;
 
 	/* read from the sensor (uart buffer) */
-	ret = ::read(_fd, &readbuf[0], readlen);
+	int ret = ::read(_fd, &readbuf[0], readlen);
 
 	if (ret < 0) {
 		DEVICE_DEBUG("read err: %d", ret);
@@ -557,10 +521,11 @@ TFMINI::collect()
 	_last_read = hrt_absolute_time();
 
 	float distance_m = -1.0f;
+	int8_t signal_quality = -1.0;
 	bool valid = false;
 
 	for (int i = 0; i < ret; i++) {
-		if (OK == tfmini_parser(readbuf[i], _linebuf, &_linebuf_index, &_parse_state, &distance_m)) {
+		if (OK == tfmini_parser(readbuf[i], _linebuf, &_linebuf_index, &_parse_state, &distance_m, &signal_quality)) {
 			valid = true;
 		}
 	}
@@ -571,7 +536,7 @@ TFMINI::collect()
 
 	DEVICE_DEBUG("val (float): %8.4f, raw: %s, valid: %s", (double)distance_m, _linebuf, ((valid) ? "OK" : "NO"));
 
-	struct distance_sensor_s report;
+	distance_sensor_s report = {};
 
 	report.timestamp = hrt_absolute_time();
 	report.type = distance_sensor_s::MAV_DISTANCE_SENSOR_LASER;
@@ -579,8 +544,7 @@ TFMINI::collect()
 	report.current_distance = distance_m;
 	report.min_distance = get_minimum_distance();
 	report.max_distance = get_maximum_distance();
-	report.covariance = 0.0f;
-	report.signal_quality = -1;
+	report.signal_quality = signal_quality;
 	/* TODO: set proper ID */
 	report.id = 0;
 
@@ -651,7 +615,7 @@ TFMINI::cycle()
 		if (OK != collect_ret) {
 
 			/* we know the sensor needs about four seconds to initialize */
-			if (hrt_absolute_time() > 5 * 1000 * 1000LL && _consecutive_fail_count < 5) {
+			if (hrt_absolute_time() > 5_s && _consecutive_fail_count < 5) {
 				DEVICE_LOG("collection error #%u", _consecutive_fail_count);
 			}
 
@@ -699,10 +663,10 @@ TFMINI::cycle()
 void
 TFMINI::print_info()
 {
-	printf("Using port '%s'\n", _port);
+	PX4_INFO("Using port '%s'", _port);
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
-	printf("poll interval:  %d ticks\n", _measure_ticks);
+	PX4_INFO("poll interval:  %d ticks", _measure_ticks);
 	_reports->print_info("report queue");
 }
 

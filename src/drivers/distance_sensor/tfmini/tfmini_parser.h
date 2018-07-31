@@ -42,19 +42,20 @@
 
 #pragma once
 
+#include <cstdint>
+
 // Data Format for Benewake TFmini
 // ===============================
 // 9 bytes total per message:
-// 1) 0x59
-// 2) 0x59
-// 3) Dist_L (low 8bit)
-// 4) Dist_H (high 8bit)
-// 5) Strength_L (low 8bit)
-// 6) Strength_H (high 8bit)
-// 7) Reserved bytes
-// 8) Original signal quality degree
-// 9) Checksum parity bit (low 8bit), Checksum = Byte1 + Byte2 +...+Byte8. This is only a low 8bit though
-
+// Byte0) 0x59
+// Byte1) 0x59
+// Byte2) Dist_L (low 8 bits)
+// Byte3) Dist_H (high 8 bits)
+// Byte4) Strength_L (low 8 bits)
+// Byte5) Strength_H (high 8 bits)
+// Byte6) Mode, distance mode, represented respectively by 02 (short distance) and 07 (long distance), automatically switchable by default.
+// Byte7) Spare byte, 00 by default
+// Byte8) CheckSum is the low 8 bits of the cumulative sum of the numbers of the first 8 bytes.
 
 enum TFMINI_PARSE_STATE {
 	TFMINI_PARSE_STATE0_UNSYNC = 0,
@@ -69,4 +70,5 @@ enum TFMINI_PARSE_STATE {
 	TFMINI_PARSE_STATE6_GOT_CHECKSUM
 };
 
-int tfmini_parser(char c, char *parserbuf, unsigned *parserbuf_index, enum TFMINI_PARSE_STATE *state, float *dist);
+int tfmini_parser(char c, char *parserbuf, unsigned *parserbuf_index, enum TFMINI_PARSE_STATE *state, float *dist,
+		  int8_t *signal_quality);

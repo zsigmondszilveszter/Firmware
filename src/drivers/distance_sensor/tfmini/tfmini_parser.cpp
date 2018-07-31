@@ -41,15 +41,14 @@
  */
 
 #include "tfmini_parser.h"
+
 #include <string.h>
 #include <stdlib.h>
 
 // #define TFMINI_DEBUG
-
-#ifdef TFMINI_DEBUG
 #include <stdio.h>
 
-const char *parser_state[] = {
+static constexpr const char *parser_state[] = {
 	"0_UNSYNC",
 	"1_SYNC_1",
 	"2_SYNC_2",
@@ -61,9 +60,9 @@ const char *parser_state[] = {
 	"8_GOT_QUALITY"
 	"9_GOT_CHECKSUM"
 };
-#endif
 
-int tfmini_parser(char c, char *parserbuf, unsigned *parserbuf_index, enum TFMINI_PARSE_STATE *state, float *dist)
+int tfmini_parser(char c, char *parserbuf, unsigned *parserbuf_index, enum TFMINI_PARSE_STATE *state, float *dist,
+		  int8_t *signal_quality)
 {
 	int ret = -1;
 	//char *end;
@@ -147,22 +146,38 @@ int tfmini_parser(char c, char *parserbuf, unsigned *parserbuf_index, enum TFMIN
 
 	case TFMINI_PARSE_STATE5_GOT_QUALITY:
 		// Find the checksum
-		unsigned char cksm = 0;
+		unsigned char checksum = 0;
 
 		for (int i = 0; i < 8; i++) {
-			cksm += parserbuf[i];
+			checksum += parserbuf[i];
 		}
 
-		if (c == cksm) {
+		if (c == checksum) {
 			parserbuf[*parserbuf_index] = '\0';
-			unsigned int t1 = parserbuf[2];
-			unsigned int t2 = parserbuf[3];
-			t2 <<= 8;
-			t2 += t1;
-			*dist = ((float)t2) / 100;
+
+			const uint8_t frame_header1 = parserbuf[0];
+			const uint8_t frame_header2 = parserbuf[1];
+
+			const unsigned distance = parserbuf[2] + (parserbuf[3] << 8);
+			const unsigned strength = parserbuf[4] + (parserbuf[5] << 8);
+
+			if (frame_header1 == 0x59 && frame_header2 == 0x59) {
+
+				//  distance: output set to FFFF if deemed unreliable
+				if (distance != 0xFFFF) {
+
+					// return distance in meters
+					*dist = distance / 100.0f;
+
+					// NOTE: not a real signal quality percentage
+					*signal_quality = (1.0f - (strength / 3000.0f)) * 100;
+
+					ret = 0;
+				}
+			}
+
 			*state = TFMINI_PARSE_STATE6_GOT_CHECKSUM;
 			*parserbuf_index = 0;
-			ret = 0;
 
 		} else {
 			*state = TFMINI_PARSE_STATE0_UNSYNC;
