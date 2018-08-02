@@ -273,8 +273,6 @@ MPU9250_mag::_measure(struct ak8963_regs data)
 
 	mrb.error_count = perf_event_count(_mag_errors);
 
-	last_mrb = mrb;
-
 	_mag_reports->force(&mrb);
 
 	/* notify anyone waiting for data */

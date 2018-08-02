@@ -288,10 +288,6 @@ MPU9250::init()
 	use_i2c((_interface->ioctl(MPUIOCGIS_I2C, dummy) == 1));
 #endif
 
-
-	last_arb.x = last_arb.y = last_arb.z = last_arb.x_raw = last_arb.y_raw = last_arb.z_raw = 0;
-	last_grb.x = last_grb.y = last_grb.z = last_grb.x_raw = last_grb.y_raw = last_grb.z_raw = 0;
-
 	/*
 	 * If the MPU is using I2C we should reduce the sample rate to 200Hz and
 	 * make the integration autoreset faster so that we integrate just one
@@ -1878,9 +1874,6 @@ MPU9250::measure()
 		_accel_reports->force(&arb);
 		_gyro_reports->force(&grb);
 
-		last_grb = grb;
-		last_arb = arb;
-
 		/* notify anyone waiting for data */
 		if (accel_notify) {
 			poll_notify(POLLIN);
@@ -1927,9 +1920,6 @@ MPU9250::print_info()
 	float gyro_cut = _gyro_filter_x.get_cutoff_freq();
 	::printf("gyro cutoff set to %10.2f Hz\n", double(gyro_cut));
 
-	print_message(_mag->last_mrb);
-	print_message(last_arb);
-	print_message(last_grb);
 
 }
 
