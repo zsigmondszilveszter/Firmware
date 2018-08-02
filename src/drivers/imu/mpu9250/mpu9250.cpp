@@ -1129,7 +1129,7 @@ MPU9250::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 	case ACCELIOCSSCALE: {
 			/* copy scale, but only if off by a few percent */
-	        DEVICE_DEBUG("I'm on bus %d, type %d", _interface->get_device_bus(),_device_type);
+			DEVICE_DEBUG("I'm on bus %d, type %d", _interface->get_device_bus(), _device_type);
 			struct accel_calibration_s *s = (struct accel_calibration_s *) arg;
 			float sum = s->x_scale + s->y_scale + s->z_scale;
 

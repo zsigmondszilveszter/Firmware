@@ -325,7 +325,7 @@ start(enum MPU9250_BUS busid, enum Rotation rotation, bool external, bool magnet
 
 		started |= start_bus(bus_options[i], rotation, external, magnetometer_only);
 
-		if(started) break;
+		if (started) { break; }
 	}
 
 	exit(started ? 0 : 1);
