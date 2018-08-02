@@ -406,9 +406,6 @@ public:
 	// deliberately cause a sensor error
 	void 			test_error();
 
-	accel_report	last_arb;
-	gyro_report		last_grb;
-
 protected:
 	Device			*_interface;
 

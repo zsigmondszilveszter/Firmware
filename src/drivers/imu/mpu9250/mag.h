@@ -154,8 +154,6 @@ public:
 	bool ak8963_check_id(uint8_t &id);
 	bool ak8963_read_adjustments(void);
 
-	mag_report	last_mrb;
-
 protected:
 	Device			*_interface;
 
