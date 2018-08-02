@@ -33,8 +33,9 @@ set(config_module_list
 	drivers/pwm_out_sim
 	drivers/px4flow
 	drivers/px4fmu
-	drivers/rgbled
 	drivers/rc_input
+	drivers/rgbled
+	drivers/safety_button
 	drivers/stm32
 	drivers/stm32/adc
 	drivers/stm32/tone_alarm

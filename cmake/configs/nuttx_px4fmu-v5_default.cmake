@@ -41,6 +41,7 @@ set(config_module_list
 	drivers/rc_input
 	drivers/rgbled
 	#drivers/rgbled_pwm # Enable to put the three leds into PWM RGB mode
+	drivers/safety_button
 	drivers/stm32
 	drivers/stm32/adc
 	drivers/stm32/tone_alarm

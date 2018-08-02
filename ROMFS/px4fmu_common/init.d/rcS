@@ -433,6 +433,7 @@ else
 
 	if [ $IO_PRESENT = no -o $USE_IO = no ]
 	then
+		safety_button start
 		rc_input start
 	fi
 
