@@ -40,6 +40,7 @@
 #include <px4_module.h>
 #include <px4_module_params.h>
 #include <mathlib/mathlib.h>
+#include <systemlib/hysteresis/hysteresis.h>
 
 // publications
 #include <uORB/Publication.hpp>
@@ -124,6 +125,9 @@ private:
 	hrt_abstime	_time_last_innov_pass{0};	/**< last time velocity innovations passed */
 	bool		_nav_test_passed{false};	/**< true if the post takeoff navigation test has passed */
 	bool		_nav_test_failed{false};	/**< true if the post takeoff navigation test has failed */
+
+	systemlib::Hysteresis	_auto_disarm_landed{false};
+	systemlib::Hysteresis	_auto_disarm_killed{false};
 
 	bool handle_command(vehicle_status_s *status, const vehicle_command_s &cmd,
 			    actuator_armed_s *armed, home_position_s *home, orb_advert_t *home_pub, orb_advert_t *command_ack_pub, bool *changed);

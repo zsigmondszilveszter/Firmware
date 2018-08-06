@@ -74,10 +74,7 @@
 #include <px4_tasks.h>
 #include <px4_time.h>
 #include <circuit_breaker/circuit_breaker.h>
-#include <systemlib/err.h>
-#include <systemlib/hysteresis/hysteresis.h>
 #include <systemlib/mavlink_log.h>
-#include <parameters/param.h>
 
 #include <cmath>
 #include <cfloat>
@@ -146,8 +143,6 @@ static hrt_abstime commander_boot_timestamp = 0;
 static unsigned int leds_counter;
 /* To remember when last notification was sent */
 static uint64_t last_print_mode_reject_time = 0;
-
-static systemlib::Hysteresis auto_disarm_hysteresis(false);
 
 static float min_stick_change = 0.25f;
 
@@ -545,6 +540,7 @@ transition_result_t arm_disarm(bool arm, orb_advert_t *mavlink_log_pub_local, co
 Commander::Commander() :
 	ModuleParams(nullptr)
 {
+	_auto_disarm_killed.set_hysteresis_time_from(false, 5_s);
 }
 
 bool
@@ -1501,7 +1497,7 @@ Commander::run()
 			// After that it will be set in the main state
 			// machine based on the arming state.
 			if (param_init_forced) {
-				auto_disarm_hysteresis.set_hysteresis_time_from(false, disarm_when_landed * 1_s);
+				_auto_disarm_landed.set_hysteresis_time_from(false, disarm_when_landed * 1_s);
 			}
 
 			param_get(_param_low_bat_act, &low_bat_action);
@@ -1739,18 +1735,20 @@ Commander::run()
 			timeout_time *= 5;
 		}
 
-		auto_disarm_hysteresis.set_hysteresis_time_from(false, timeout_time);
+		_auto_disarm_landed.set_hysteresis_time_from(false, timeout_time);
 
-		// Check for auto-disarm
-		if (armed.armed && land_detector.landed && disarm_when_landed > 0) {
-			auto_disarm_hysteresis.set_state_and_update(true);
+		// Check for auto-disarm on landing
+		_auto_disarm_landed.set_state_and_update(armed.armed && land_detector.landed && disarm_when_landed > 0);
 
-		} else {
-			auto_disarm_hysteresis.set_state_and_update(false);
+		if (_auto_disarm_landed.get_state()) {
+			arm_disarm(false, &mavlink_log_pub, "auto disarm on land");
 		}
 
-		if (auto_disarm_hysteresis.get_state()) {
-			arm_disarm(false, &mavlink_log_pub, "auto disarm on land");
+		// Auto disarm after 5 seconds if kill switch is engaged
+		_auto_disarm_killed.set_state_and_update(armed.armed && armed.manual_lockdown);
+
+		if (_auto_disarm_killed.get_state()) {
+			arm_disarm(false, &mavlink_log_pub, "kill switch still engaged, disarming");
 		}
 
 		if (!warning_action_on) {
