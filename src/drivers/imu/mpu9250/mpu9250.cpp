@@ -1430,8 +1430,11 @@ MPU9250::start()
 	stop();
 
 	/* discard any stale data in the buffers */
-	_accel_reports->flush();
-	_gyro_reports->flush();
+	if (!_magnetometer_only) {
+		_accel_reports->flush();
+		_gyro_reports->flush();
+	}
+
 	_mag->_mag_reports->flush();
 
 	if (_use_hrt) {
