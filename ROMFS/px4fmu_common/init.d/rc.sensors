@@ -159,7 +159,7 @@ fi
 if ver hwcmp PX4FMU_V2
 then
 	# External I2C bus
-	hmc5883 -C -T -X start
+	#hmc5883 -C -T -X start
 	lis3mdl -X start
 	ist8310 -C start
 
@@ -211,10 +211,10 @@ then
 	then
 		# sensor heating is available, but we disable it for now
 		param set SENS_EN_THERMAL 0        
-		
-		# probe for ICM20948 (Here GPS) on external I2C. Rotation 6 (270° Yaw) is correct
+        
+        # probe for ICM20948 (Here GPS) on external I2C. Rotation 6 (270° Yaw) is correct
         # for a Here GNSS mounted in Flight direction
-        mpu9250 -X -R 6 start
+        mpu9250 -X -M -R 6 start
 
 		# external L3GD20H is rotated 180 degrees yaw
 		l3gd20 -X -R 4 start
