@@ -293,7 +293,7 @@ MPU9250::init()
 	 * make the integration autoreset faster so that we integrate just one
 	 * sample since the sampling rate is already low.
 	*/
-	if (is_i2c()) {
+	if (is_i2c() && !_magnetometer_only) {
 		_sample_rate = 200;
 		_accel_int.set_autoreset_interval(1000000 / 1000);
 		_gyro_int.set_autoreset_interval(1000000 / 1000);
@@ -306,9 +306,7 @@ MPU9250::init()
 		return ret;
 	}
 
-
 	/* do init */
-
 	ret = CDev::init();
 
 	/* if init failed, bail now */
@@ -318,6 +316,7 @@ MPU9250::init()
 	}
 
 	if (!_magnetometer_only) {
+
 		/* allocate basic report buffers */
 		_accel_reports = new ringbuffer::RingBuffer(2, sizeof(accel_report));
 		ret = -ENOMEM;
@@ -387,13 +386,16 @@ MPU9250::init()
 	}
 
 	/* do CDev init for the gyro device node, keep it optional */
-	ret = _gyro->init();
+	if (!_magnetometer_only) {
+		ret = _gyro->init();
 
-	/* if probe/setup failed, bail now */
-	if (ret != OK) {
-		DEVICE_DEBUG("gyro init failed");
-		return ret;
+		/* if probe/setup failed, bail now */
+		if (ret != OK) {
+			DEVICE_DEBUG("gyro init failed");
+			return ret;
+		}
 	}
+
 
 	/* Magnetometer setup */
 	if (_device_type == MPU_DEVICE_TYPE_MPU9250 || _device_type == MPU_DEVICE_TYPE_ICM20948) {
@@ -426,7 +428,9 @@ MPU9250::init()
 		}
 	}
 
-	_accel_class_instance = register_class_devname(ACCEL_BASE_DEVICE_PATH);
+	if (!_magnetometer_only) {
+		_accel_class_instance = register_class_devname(ACCEL_BASE_DEVICE_PATH);
+	}
 
 	measure();
 
@@ -1848,15 +1852,20 @@ MPU9250::print_info()
 	perf_print_counter(_good_transfers);
 	perf_print_counter(_reset_retries);
 	perf_print_counter(_duplicates);
-	_accel_reports->print_info("accel queue");
-	_gyro_reports->print_info("gyro queue");
-	_mag->_mag_reports->print_info("mag queue");
+
+	if (!_magnetometer_only) {
+		_accel_reports->print_info("accel queue");
+		_gyro_reports->print_info("gyro queue");
+		_mag->_mag_reports->print_info("mag queue");
+
+		float accel_cut = _accel_filter_x.get_cutoff_freq();
+		::printf("accel cutoff set to %10.2f Hz\n", double(accel_cut));
+		float gyro_cut = _gyro_filter_x.get_cutoff_freq();
+		::printf("gyro cutoff set to %10.2f Hz\n", double(gyro_cut));
+
+	}
 
 	::printf("temperature: %.1f\n", (double)_last_temperature);
-	float accel_cut = _accel_filter_x.get_cutoff_freq();
-	::printf("accel cutoff set to %10.2f Hz\n", double(accel_cut));
-	float gyro_cut = _gyro_filter_x.get_cutoff_freq();
-	::printf("gyro cutoff set to %10.2f Hz\n", double(gyro_cut));
 
 
 }
