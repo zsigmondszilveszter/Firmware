@@ -137,7 +137,7 @@ MPU9250::MPU9250(device::Device *interface, device::Device *mag_interface, const
 		 bool magnetometer_only) :
 	_interface(interface),
 	_name("MPU9250"),
-    _accel(magnetometer_only ? nullptr : new MPU9250_accel(this, path_accel)),
+	_accel(magnetometer_only ? nullptr : new MPU9250_accel(this, path_accel)),
 	_gyro(magnetometer_only ? nullptr : new MPU9250_gyro(this, path_gyro)),
 	_mag(new MPU9250_mag(this, mag_interface, path_mag)),
 	_whoami(0),
@@ -193,12 +193,12 @@ MPU9250::MPU9250(device::Device *interface, device::Device *mag_interface, const
 {
 	_debug_enabled = false;
 
-	if(_accel != nullptr) {
-        /* Set device parameters and make sure parameters of the bus device are adopted */
-        _accel->_device_id.devid_s.devtype = DRV_ACC_DEVTYPE_MPU9250;
-        _accel->_device_id.devid_s.bus_type = (device::Device::DeviceBusType)_interface->get_device_bus_type();
-        _accel->_device_id.devid_s.bus = _interface->get_device_bus();
-        _accel->_device_id.devid_s.address = _interface->get_device_address();
+	if (_accel != nullptr) {
+		/* Set device parameters and make sure parameters of the bus device are adopted */
+		_accel->_device_id.devid_s.devtype = DRV_ACC_DEVTYPE_MPU9250;
+		_accel->_device_id.devid_s.bus_type = (device::Device::DeviceBusType)_interface->get_device_bus_type();
+		_accel->_device_id.devid_s.bus = _interface->get_device_bus();
+		_accel->_device_id.devid_s.address = _interface->get_device_address();
 	}
 
 	/* Prime _gyro with common devid. */
@@ -249,8 +249,8 @@ MPU9250::~MPU9250()
 	orb_unadvertise(_accel_topic);
 	orb_unadvertise(_gyro->_gyro_topic);
 
-    /* delete the accel subdriver */
-    delete _accel;
+	/* delete the accel subdriver */
+	delete _accel;
 
 	/* delete the gyro subdriver */
 	delete _gyro;
@@ -287,6 +287,7 @@ MPU9250::init()
 	unsigned dummy;
 	use_i2c((_interface->ioctl(MPUIOCGIS_I2C, dummy) == 1));
 #endif
+
 	/*
 	 * If the MPU is using I2C we should reduce the sample rate to 200Hz and
 	 * make the integration autoreset faster so that we integrate just one
@@ -305,14 +306,14 @@ MPU9250::init()
 		return ret;
 	}
 
-    state = px4_enter_critical_section();
-    _reset_wait = hrt_absolute_time() + 100000;
-    px4_leave_critical_section(state);
+	state = px4_enter_critical_section();
+	_reset_wait = hrt_absolute_time() + 100000;
+	px4_leave_critical_section(state);
 
-    if (reset_mpu() != OK) {
-        PX4_ERR("Exiting! Device failed to take initialization");
-        return ret;
-    }
+	if (reset_mpu() != OK) {
+		PX4_ERR("Exiting! Device failed to take initialization");
+		return ret;
+	}
 
 
 	if (!_magnetometer_only) {
@@ -331,61 +332,61 @@ MPU9250::init()
 			return ret;
 		}
 
-        /* Initialize offsets and scales */
-        _accel_scale.x_offset = 0;
-        _accel_scale.x_scale  = 1.0f;
-        _accel_scale.y_offset = 0;
-        _accel_scale.y_scale  = 1.0f;
-        _accel_scale.z_offset = 0;
-        _accel_scale.z_scale  = 1.0f;
+		/* Initialize offsets and scales */
+		_accel_scale.x_offset = 0;
+		_accel_scale.x_scale  = 1.0f;
+		_accel_scale.y_offset = 0;
+		_accel_scale.y_scale  = 1.0f;
+		_accel_scale.z_offset = 0;
+		_accel_scale.z_scale  = 1.0f;
 
-        _gyro_scale.x_offset = 0;
-        _gyro_scale.x_scale  = 1.0f;
-        _gyro_scale.y_offset = 0;
-        _gyro_scale.y_scale  = 1.0f;
-        _gyro_scale.z_offset = 0;
-        _gyro_scale.z_scale  = 1.0f;
+		_gyro_scale.x_offset = 0;
+		_gyro_scale.x_scale  = 1.0f;
+		_gyro_scale.y_offset = 0;
+		_gyro_scale.y_scale  = 1.0f;
+		_gyro_scale.z_offset = 0;
+		_gyro_scale.z_scale  = 1.0f;
 
-        // set software low pass filter for controllers
-        param_t accel_cut_ph = param_find("IMU_ACCEL_CUTOFF");
-        float accel_cut = MPU9250_ACCEL_DEFAULT_DRIVER_FILTER_FREQ;
+		// set software low pass filter for controllers
+		param_t accel_cut_ph = param_find("IMU_ACCEL_CUTOFF");
+		float accel_cut = MPU9250_ACCEL_DEFAULT_DRIVER_FILTER_FREQ;
 
-        if (accel_cut_ph != PARAM_INVALID && (param_get(accel_cut_ph, &accel_cut) == PX4_OK)) {
-            PX4_INFO("accel cutoff set to %.2f Hz", double(accel_cut));
+		if (accel_cut_ph != PARAM_INVALID && (param_get(accel_cut_ph, &accel_cut) == PX4_OK)) {
+			PX4_INFO("accel cutoff set to %.2f Hz", double(accel_cut));
 
-            _accel_filter_x.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
-            _accel_filter_y.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
-            _accel_filter_z.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
+			_accel_filter_x.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
+			_accel_filter_y.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
+			_accel_filter_z.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
 
-        } else {
-            PX4_ERR("IMU_ACCEL_CUTOFF param invalid");
-        }
+		} else {
+			PX4_ERR("IMU_ACCEL_CUTOFF param invalid");
+		}
 
-        param_t gyro_cut_ph = param_find("IMU_GYRO_CUTOFF");
-        float gyro_cut = MPU9250_GYRO_DEFAULT_DRIVER_FILTER_FREQ;
+		param_t gyro_cut_ph = param_find("IMU_GYRO_CUTOFF");
+		float gyro_cut = MPU9250_GYRO_DEFAULT_DRIVER_FILTER_FREQ;
 
-        if (gyro_cut_ph != PARAM_INVALID && (param_get(gyro_cut_ph, &gyro_cut) == PX4_OK)) {
-            PX4_INFO("gyro cutoff set to %.2f Hz", double(gyro_cut));
+		if (gyro_cut_ph != PARAM_INVALID && (param_get(gyro_cut_ph, &gyro_cut) == PX4_OK)) {
+			PX4_INFO("gyro cutoff set to %.2f Hz", double(gyro_cut));
 
-            _gyro_filter_x.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
-            _gyro_filter_y.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
-            _gyro_filter_z.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
+			_gyro_filter_x.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
+			_gyro_filter_y.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
+			_gyro_filter_z.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
 
-        } else {
-            PX4_ERR("IMU_GYRO_CUTOFF param invalid");
-        }
+		} else {
+			PX4_ERR("IMU_GYRO_CUTOFF param invalid");
+		}
 
-        /* do CDev init for the accel device node */
-        ret = _accel->init();
+		/* do CDev init for the accel device node */
+		ret = _accel->init();
 
-        /* do CDev init for the gyro device node */
-        ret = _gyro->init();
+		/* do CDev init for the gyro device node */
+		ret = _gyro->init();
 
-        /* if probe/setup failed, bail now */
-        if (ret != OK) {
-            DEVICE_DEBUG("gyro init failed");
-            return ret;
-        }
+		/* if probe/setup failed, bail now */
+		if (ret != OK) {
+			DEVICE_DEBUG("gyro init failed");
+			return ret;
+		}
 	}
 
 	/* Magnetometer setup */
@@ -1840,19 +1841,20 @@ MPU9250::print_info()
 	perf_print_counter(_reset_retries);
 	perf_print_counter(_duplicates);
 
-    _mag->_mag_reports->print_info("mag queue");
-	if(!_magnetometer_only) {
-        _accel_reports->print_info("accel queue");
-        _gyro_reports->print_info("gyro queue");
+	_mag->_mag_reports->print_info("mag queue");
 
-        float accel_cut = _accel_filter_x.get_cutoff_freq();
-        ::printf("accel cutoff set to %10.2f Hz\n", double(accel_cut));
-        float gyro_cut = _gyro_filter_x.get_cutoff_freq();
-        ::printf("gyro cutoff set to %10.2f Hz\n", double(gyro_cut));
+	if (!_magnetometer_only) {
+		_accel_reports->print_info("accel queue");
+		_gyro_reports->print_info("gyro queue");
+
+		float accel_cut = _accel_filter_x.get_cutoff_freq();
+		::printf("accel cutoff set to %10.2f Hz\n", double(accel_cut));
+		float gyro_cut = _gyro_filter_x.get_cutoff_freq();
+		::printf("gyro cutoff set to %10.2f Hz\n", double(gyro_cut));
 
 	}
 
-    ::printf("temperature: %.1f\n", (double)_last_temperature);
+	::printf("temperature: %.1f\n", (double)_last_temperature);
 
 
 }

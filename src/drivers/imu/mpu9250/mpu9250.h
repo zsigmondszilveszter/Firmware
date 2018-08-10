@@ -411,12 +411,12 @@ public:
 protected:
 	device::Device *_interface;
 
-    const char  *_name;
-    bool        _debug_enabled{false};
+	const char  *_name;
+	bool        _debug_enabled{false};
 
 	virtual int		probe();
 
-    friend class MPU9250_accel;
+	friend class MPU9250_accel;
 	friend class MPU9250_mag;
 	friend class MPU9250_gyro;
 

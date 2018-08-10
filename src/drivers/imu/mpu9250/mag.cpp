@@ -338,9 +338,9 @@ MPU9250_mag::ioctl(struct file *filp, int cmd, unsigned long arg)
 		return ak8963_reset();
 
 	case SENSORIOCSPOLLRATE: {
-	    /* mag is polled through main driver only */
-	    return _parent->accel_ioctl(filp, cmd, arg);
-	}
+			/* mag is polled through main driver only */
+			return _parent->accel_ioctl(filp, cmd, arg);
+		}
 
 	case SENSORIOCGPOLLRATE:
 		return _parent->accel_ioctl(filp, cmd, arg);
