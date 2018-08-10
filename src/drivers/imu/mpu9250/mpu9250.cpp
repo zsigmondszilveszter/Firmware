@@ -356,37 +356,37 @@ MPU9250::init()
 	_gyro_scale.z_offset = 0;
 	_gyro_scale.z_scale  = 1.0f;
 
-	// set software low pass filter for controllers
-	param_t accel_cut_ph = param_find("IMU_ACCEL_CUTOFF");
-	float accel_cut = MPU9250_ACCEL_DEFAULT_DRIVER_FILTER_FREQ;
-
-	if (accel_cut_ph != PARAM_INVALID && (param_get(accel_cut_ph, &accel_cut) == PX4_OK)) {
-		PX4_INFO("accel cutoff set to %.2f Hz", double(accel_cut));
-
-		_accel_filter_x.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
-		_accel_filter_y.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
-		_accel_filter_z.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
-
-	} else {
-		PX4_ERR("IMU_ACCEL_CUTOFF param invalid");
-	}
-
-	param_t gyro_cut_ph = param_find("IMU_GYRO_CUTOFF");
-	float gyro_cut = MPU9250_GYRO_DEFAULT_DRIVER_FILTER_FREQ;
-
-	if (gyro_cut_ph != PARAM_INVALID && (param_get(gyro_cut_ph, &gyro_cut) == PX4_OK)) {
-		PX4_INFO("gyro cutoff set to %.2f Hz", double(gyro_cut));
-
-		_gyro_filter_x.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
-		_gyro_filter_y.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
-		_gyro_filter_z.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
-
-	} else {
-		PX4_ERR("IMU_GYRO_CUTOFF param invalid");
-	}
-
-	/* do CDev init for the gyro device node, keep it optional */
 	if (!_magnetometer_only) {
+		// set software low pass filter for controllers
+		param_t accel_cut_ph = param_find("IMU_ACCEL_CUTOFF");
+		float accel_cut = MPU9250_ACCEL_DEFAULT_DRIVER_FILTER_FREQ;
+
+		if (accel_cut_ph != PARAM_INVALID && (param_get(accel_cut_ph, &accel_cut) == PX4_OK)) {
+			PX4_INFO("accel cutoff set to %.2f Hz", double(accel_cut));
+
+			_accel_filter_x.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
+			_accel_filter_y.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
+			_accel_filter_z.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
+
+		} else {
+			PX4_ERR("IMU_ACCEL_CUTOFF param invalid");
+		}
+
+		param_t gyro_cut_ph = param_find("IMU_GYRO_CUTOFF");
+		float gyro_cut = MPU9250_GYRO_DEFAULT_DRIVER_FILTER_FREQ;
+
+		if (gyro_cut_ph != PARAM_INVALID && (param_get(gyro_cut_ph, &gyro_cut) == PX4_OK)) {
+			PX4_INFO("gyro cutoff set to %.2f Hz", double(gyro_cut));
+
+			_gyro_filter_x.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
+			_gyro_filter_y.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
+			_gyro_filter_z.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
+
+		} else {
+			PX4_ERR("IMU_GYRO_CUTOFF param invalid");
+		}
+
+		/* do CDev init for the gyro device node, keep it optional */
 		ret = _gyro->init();
 
 		/* if probe/setup failed, bail now */
