@@ -338,44 +338,12 @@ MPU9250_mag::ioctl(struct file *filp, int cmd, unsigned long arg)
 		return ak8963_reset();
 
 	case SENSORIOCSPOLLRATE: {
-			switch (arg) {
-
-			/* switching to manual polling */
-			case SENSOR_POLLRATE_MANUAL:
-				/*
-				 * TODO: investigate being able to stop
-				 *       the continuous sampling
-				 */
-				//stop();
-				return OK;
-
-			/* external signalling not supported */
-			case SENSOR_POLLRATE_EXTERNAL:
-
-			/* zero would be bad */
-			case 0:
-				return -EINVAL;
-
-			/* set default/max polling rate */
-			case SENSOR_POLLRATE_MAX:
-				return ioctl(filp, SENSORIOCSPOLLRATE, 100);
-
-			case SENSOR_POLLRATE_DEFAULT:
-				return ioctl(filp, SENSORIOCSPOLLRATE, MPU9250_AK8963_SAMPLE_RATE);
-
-			/* adjust to a legal polling interval in Hz */
-			default: {
-					if (MPU9250_AK8963_SAMPLE_RATE != arg) {
-						return -EINVAL;
-					}
-
-					return OK;
-				}
-			}
+			/* mag is polled through main driver only */
+			return _parent->accel_ioctl(filp, cmd, arg);
 		}
 
 	case SENSORIOCGPOLLRATE:
-		return MPU9250_AK8963_SAMPLE_RATE;
+		return _parent->accel_ioctl(filp, cmd, arg);
 
 	case SENSORIOCSQUEUEDEPTH: {
 			/* lower bound is mandatory, upper bound is a sanity check */
