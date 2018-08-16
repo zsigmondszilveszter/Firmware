@@ -44,45 +44,35 @@
 
 #include "Commander.hpp"
 
-/* commander module headers */
-#include "accelerometer_calibration.h"
-#include "airspeed_calibration.h"
 #include "arm_auth.h"
-#include "baro_calibration.h"
-#include "calibration_routines.h"
 #include "commander_helper.h"
-#include "esc_calibration.h"
-#include "gyro_calibration.h"
-#include "mag_calibration.h"
+#include "health_flag_helper.h"
 #include "PreflightCheck.h"
 #include "px4_custom_mode.h"
-#include "rc_calibration.h"
 #include "state_machine_helper.h"
-#include "health_flag_helper.h"
 
-/* PX4 headers */
+#include <calibration/esc/esc_calibration.h>
+#include <calibration/rc/rc_calibration.h>
+#include <calibration/sensors/accelerometer_calibration.h>
+#include <calibration/sensors/airspeed_calibration.h>
+#include <calibration/sensors/gyro_calibration.h>
+#include <calibration/sensors/mag_calibration.h>
+#include <circuit_breaker/circuit_breaker.h>
 #include <dataman/dataman.h>
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_tone_alarm.h>
 #include <lib/ecl/geo/geo.h>
 #include <mathlib/mathlib.h>
 #include <navigator/navigation.h>
+#include <parameters/param.h>
 #include <px4_config.h>
 #include <px4_defines.h>
 #include <px4_posix.h>
 #include <px4_shutdown.h>
 #include <px4_tasks.h>
 #include <px4_time.h>
-#include <circuit_breaker/circuit_breaker.h>
-#include <systemlib/err.h>
 #include <systemlib/hysteresis/hysteresis.h>
 #include <systemlib/mavlink_log.h>
-#include <parameters/param.h>
-
-#include <cmath>
-#include <cfloat>
-#include <cstring>
-
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/battery_status.h>
@@ -108,6 +98,10 @@
 #include <uORB/topics/vehicle_status_flags.h>
 #include <uORB/topics/vtol_vehicle_status.h>
 #include <uORB/uORB.h>
+
+#include <cmath>
+#include <cfloat>
+#include <cstring>
 
 typedef enum VEHICLE_MODE_FLAG
 {
@@ -346,17 +340,17 @@ int commander_main(int argc, char *argv[])
 		if (argc > 2) {
 			int calib_ret = OK;
 			if (!strcmp(argv[2], "mag")) {
-				calib_ret = do_mag_calibration(&mavlink_log_pub);
+				calib_ret = calibration::do_mag_calibration(&mavlink_log_pub);
 			} else if (!strcmp(argv[2], "accel")) {
-				calib_ret = do_accel_calibration(&mavlink_log_pub);
+				calib_ret = calibration::do_accel_calibration(&mavlink_log_pub);
 			} else if (!strcmp(argv[2], "gyro")) {
-				calib_ret = do_gyro_calibration(&mavlink_log_pub);
+				calib_ret = calibration::do_gyro_calibration(&mavlink_log_pub);
 			} else if (!strcmp(argv[2], "level")) {
-				calib_ret = do_level_calibration(&mavlink_log_pub);
+				calib_ret = calibration::do_level_calibration(&mavlink_log_pub);
 			} else if (!strcmp(argv[2], "esc")) {
-				calib_ret = do_esc_calibration(&mavlink_log_pub, &armed);
+				calib_ret = calibration::do_esc_calibration(&mavlink_log_pub, &armed);
 			} else if (!strcmp(argv[2], "airspeed")) {
-				calib_ret = do_airspeed_calibration(&mavlink_log_pub);
+				calib_ret = calibration::do_airspeed_calibration(&mavlink_log_pub);
 			} else {
 				PX4_ERR("argument %s unsupported.", argv[2]);
 			}
@@ -3654,7 +3648,7 @@ void *commander_low_prio_loop(void *arg)
 					if ((int)(cmd.param1) == 1) {
 						/* gyro calibration */
 						answer_command(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED, command_ack_pub);
-						calib_ret = do_gyro_calibration(&mavlink_log_pub);
+						calib_ret = calibration::do_gyro_calibration(&mavlink_log_pub);
 
 					} else if ((int)(cmd.param1) == vehicle_command_s::PREFLIGHT_CALIBRATION_TEMPERATURE_CALIBRATION ||
 						   (int)(cmd.param5) == vehicle_command_s::PREFLIGHT_CALIBRATION_TEMPERATURE_CALIBRATION ||
@@ -3665,7 +3659,7 @@ void *commander_low_prio_loop(void *arg)
 					} else if ((int)(cmd.param2) == 1) {
 						/* magnetometer calibration */
 						answer_command(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED, command_ack_pub);
-						calib_ret = do_mag_calibration(&mavlink_log_pub);
+						calib_ret = calibration::do_mag_calibration(&mavlink_log_pub);
 
 					} else if ((int)(cmd.param3) == 1) {
 						/* zero-altitude pressure calibration */
@@ -3682,28 +3676,28 @@ void *commander_low_prio_loop(void *arg)
 					} else if ((int)(cmd.param4) == 2) {
 						/* RC trim calibration */
 						answer_command(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED, command_ack_pub);
-						calib_ret = do_trim_calibration(&mavlink_log_pub);
+						calib_ret = calibration::do_trim_calibration(&mavlink_log_pub);
 
 					} else if ((int)(cmd.param5) == 1) {
 						/* accelerometer calibration */
 						answer_command(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED, command_ack_pub);
-						calib_ret = do_accel_calibration(&mavlink_log_pub);
+						calib_ret = calibration::do_accel_calibration(&mavlink_log_pub);
 
 					} else if ((int)(cmd.param5) == 2) {
 						// board offset calibration
 						answer_command(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED, command_ack_pub);
-						calib_ret = do_level_calibration(&mavlink_log_pub);
+						calib_ret = calibration::do_level_calibration(&mavlink_log_pub);
 
 					} else if ((int)(cmd.param6) == 1 || (int)(cmd.param6) == 2) {
 						// TODO: param6 == 1 is deprecated, but we still accept it for a while (feb 2017)
 						/* airspeed calibration */
 						answer_command(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED, command_ack_pub);
-						calib_ret = do_airspeed_calibration(&mavlink_log_pub);
+						calib_ret = calibration::do_airspeed_calibration(&mavlink_log_pub);
 
 					} else if ((int)(cmd.param7) == 1) {
 						/* do esc calibration */
 						answer_command(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED, command_ack_pub);
-						calib_ret = do_esc_calibration(&mavlink_log_pub, &armed);
+						calib_ret = calibration::do_esc_calibration(&mavlink_log_pub, &armed);
 
 					} else if ((int)(cmd.param4) == 0) {
 						/* RC calibration ended - have we been in one worth confirming? */

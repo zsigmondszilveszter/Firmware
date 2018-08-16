@@ -108,6 +108,7 @@ bool is_vtol(const struct vehicle_status_s * current_status) {
 }
 
 static hrt_abstime blink_msg_end = 0;	// end time for currently blinking LED message, 0 if no blink message
+
 static hrt_abstime tune_end = 0;		// end time of currently played tune, 0 for repeating tunes or silence
 static int tune_current = TONE_STOP_TUNE;		// currently playing tune, can be interrupted after tune_end
 static unsigned int tune_durations[TONE_NUMBER_OF_TUNES];

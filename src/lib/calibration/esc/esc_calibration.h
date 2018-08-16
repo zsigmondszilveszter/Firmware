@@ -39,11 +39,13 @@
  * @author Roman Bapst <roman@px4.io>
  */
 
-#ifndef ESC_CALIBRATION_H_
-#define ESC_CALIBRATION_H_
+#pragma once
 
 #include <uORB/topics/actuator_armed.h>
 
-int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* armed);
+namespace calibration
+{
 
-#endif
+int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s *armed);
+
+} // namespace calibration

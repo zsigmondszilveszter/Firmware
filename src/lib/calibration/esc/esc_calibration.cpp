@@ -40,44 +40,41 @@
  */
 
 #include "esc_calibration.h"
-#include "calibration_messages.h"
-#include "calibration_routines.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <systemlib/err.h>
-#include <fcntl.h>
+#include <calibration/calibration_messages.h>
+#include <calibration/calibration_routines.h>
+
+#include <drivers/drv_hrt.h>
+#include <drivers/drv_pwm_output.h>
 #include <px4_defines.h>
 #include <px4_posix.h>
 #include <px4_time.h>
-#include "drivers/drv_pwm_output.h"
+#include <systemlib/mavlink_log.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/uORB.h>
-#include <drivers/drv_hrt.h>
-#include <systemlib/mavlink_log.h>
 
 using namespace time_literals;
 
-int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* armed)
+namespace calibration
+{
+
+int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s *armed)
 {
 	int	return_code = PX4_OK;
-	
+
 #if defined(__PX4_POSIX_OCPOC) || defined(__PX4_POSIX_BBBLUE)
 	hrt_abstime timeout_start = 0;
 	hrt_abstime timeout_wait = 60_s;
 	armed->in_esc_calibration_mode = true;
 	calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "begin esc");
 	timeout_start = hrt_absolute_time();
-	
+
 	while (true) {
 		if (hrt_absolute_time() - timeout_start > timeout_wait) {
 			break;
-		}else{
+
+		} else {
 			usleep(50000);
 		}
 	}
@@ -88,7 +85,7 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* a
 	if (return_code == OK) {
 		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "esc");
 	}
-		  
+
 	return return_code;
 
 #else
@@ -106,6 +103,7 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* a
 	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, "esc");
 
 	batt_sub = orb_subscribe(ORB_ID(battery_status));
+
 	if (batt_sub < 0) {
 		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Subscribe to battery");
 		goto Error;
@@ -173,8 +171,10 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* a
 
 		if (!batt_connected) {
 			orb_check(batt_sub, &batt_updated);
+
 			if (batt_updated) {
 				orb_copy(ORB_ID(battery_status), batt_sub, &battery);
+
 				if (battery.connected) {
 					// Battery is connected, signal to user and start waiting again
 					batt_connected = true;
@@ -183,25 +183,32 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* a
 				}
 			}
 		}
+
 		usleep(50_ms);
 	}
 
 Out:
+
 	if (batt_sub != -1) {
 		orb_unsubscribe(batt_sub);
 	}
+
 	if (fd != -1) {
 		if (px4_ioctl(fd, PWM_SERVO_SET_FORCE_SAFETY_ON, 0) != PX4_OK) {
 			calibration_log_info(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Safety switch still off");
 		}
+
 		if (px4_ioctl(fd, PWM_SERVO_DISARM, 0) != PX4_OK) {
 			calibration_log_info(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Servos still armed");
 		}
+
 		if (px4_ioctl(fd, PWM_SERVO_CLEAR_ARM_OK, 0) != PX4_OK) {
 			calibration_log_info(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Safety switch still deactivated");
 		}
+
 		px4_close(fd);
 	}
+
 	armed->in_esc_calibration_mode = false;
 
 	if (return_code == PX4_OK) {
@@ -215,3 +222,5 @@ Error:
 	goto Out;
 #endif
 }
+
+} // namespace calibration

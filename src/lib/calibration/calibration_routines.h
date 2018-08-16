@@ -36,6 +36,13 @@
 
 #pragma once
 
+#include <stdint.h>
+
+#include <uORB/uORB.h>
+
+namespace calibration
+{
+
 /**
  * Least-squares fit of a sphere to a set of points.
  *
@@ -54,26 +61,11 @@
  *
  * @return 0 on success, 1 on failure
  */
-int sphere_fit_least_squares(const float x[], const float y[], const float z[],
-			     unsigned int size, unsigned int max_iterations, float delta, float *sphere_x, float *sphere_y, float *sphere_z,
-			     float *sphere_radius);
+
 int ellipsoid_fit_least_squares(const float x[], const float y[], const float z[],
 				unsigned int size, int max_iterations, float delta, float *offset_x, float *offset_y, float *offset_z,
 				float *sphere_radius, float *diag_x, float *diag_y, float *diag_z, float *offdiag_x, float *offdiag_y,
 				float *offdiag_z);
-int run_lm_sphere_fit(const float x[], const float y[], const float z[], float &_fitness, float &_sphere_lambda,
-		      unsigned int size, float *offset_x, float *offset_y, float *offset_z,
-		      float *sphere_radius, float *diag_x, float *diag_y, float *diag_z, float *offdiag_x, float *offdiag_y,
-		      float *offdiag_z);
-int run_lm_ellipsoid_fit(const float x[], const float y[], const float z[], float &_fitness, float &_sphere_lambda,
-		      unsigned int size, float *offset_x, float *offset_y, float *offset_z,
-		      float *sphere_radius, float *diag_x, float *diag_y, float *diag_z, float *offdiag_x, float *offdiag_y,
-		      float *offdiag_z);
-bool inverse4x4(float m[], float invOut[]);
-bool mat_inverse(float* A, float* inv, uint8_t n);
-
-// FIXME: Change the name
-static const unsigned max_accel_sens = 3;
 
 // The order of these cannot change since the calibration calculations depend on them in this order
 enum detect_orientation_return {
@@ -85,7 +77,8 @@ enum detect_orientation_return {
 	DETECT_ORIENTATION_RIGHTSIDE_UP,
 	DETECT_ORIENTATION_ERROR
 };
-static const unsigned detect_orientation_side_count = 6;
+
+static constexpr unsigned detect_orientation_side_count = 6;
 
 /// Wait for vehicle to become still and detect it's orientation
 ///	@return Returns detect_orientation_return according to orientation when vehicle
@@ -154,3 +147,5 @@ bool calibrate_cancel_check(orb_advert_t *mavlink_log_pub,	///< uORB handle to w
 		mavlink_log_emergency(_pub, _text, ##__VA_ARGS__); \
 		usleep(10000); \
 	} while(0);
+
+} // namespace calibration

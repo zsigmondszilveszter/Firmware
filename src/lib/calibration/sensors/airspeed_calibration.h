@@ -32,16 +32,17 @@
  ****************************************************************************/
 
 /**
- * @file mag_calibration.h
- * Magnetometer calibration routine
+ * @file gyro_calibration.h
+ * Airspeed sensor calibration routine
  */
 
-#ifndef MAG_CALIBRATION_H_
-#define MAG_CALIBRATION_H_
+#pragma once
 
-#include <stdint.h>
 #include <uORB/uORB.h>
 
-int do_mag_calibration(orb_advert_t *mavlink_log_pub);
+namespace calibration
+{
 
-#endif /* MAG_CALIBRATION_H_ */
+int do_airspeed_calibration(orb_advert_t *mavlink_log_pub);
+
+} // namespace calibration

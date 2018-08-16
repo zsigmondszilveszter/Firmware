@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2018 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,7 +31,12 @@
 #
 ############################################################################
 
-px4_add_library(mathlib
-	math/test/test.cpp
-	math/filter/LowPassFilter2p.cpp
+px4_add_library(calibration
+	calibration_routines.cpp
+	calibration_tunes.cpp
+	matrix_alg.cpp
 )
+
+add_subdirectory(esc)
+add_subdirectory(rc)
+add_subdirectory(sensors)

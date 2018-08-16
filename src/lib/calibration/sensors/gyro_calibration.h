@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,16 +32,18 @@
  ****************************************************************************/
 
 /**
- * @file mag_calibration.h
- * Barometer calibration routine
+ * @file gyro_calibration.h
+ * Gyroscope calibration routine
  */
 
-#ifndef BARO_CALIBRATION_H_
-#define BARO_CALIBRATION_H_
+#pragma once
 
 #include <stdint.h>
 #include <uORB/uORB.h>
 
-int do_baro_calibration(orb_advert_t *mavlink_log_pub);
+namespace calibration
+{
 
-#endif /* BARO_CALIBRATION_H_ */
+int do_gyro_calibration(orb_advert_t *mavlink_log_pub);
+
+} // namespace calibration

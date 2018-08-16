@@ -37,22 +37,17 @@ px4_add_module(
 	STACK_MAX 2450
 	COMPILE_FLAGS
 	SRCS
-		accelerometer_calibration.cpp
-		airspeed_calibration.cpp
 		arm_auth.cpp
-		baro_calibration.cpp
-		calibration_routines.cpp
 		Commander.cpp
 		commander_helper.cpp
-		esc_calibration.cpp
-		gyro_calibration.cpp
 		health_flag_helper.cpp
-		mag_calibration.cpp
 		PreflightCheck.cpp
-		rc_calibration.cpp
 		rc_check.cpp
 		state_machine_helper.cpp
 	DEPENDS
+		calibration_esc
+		calibration_rc
+		calibration_sensors
 		circuit_breaker
 		df_driver_framework
 		git_ecl

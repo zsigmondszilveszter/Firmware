@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2018 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,17 +31,21 @@
  *
  ****************************************************************************/
 
-/**
- * @file gyro_calibration.h
- * Gyroscope calibration routine
- */
-
-#ifndef GYRO_CALIBRATION_H_
-#define GYRO_CALIBRATION_H_
+#pragma once
 
 #include <stdint.h>
-#include <uORB/uORB.h>
 
-int do_gyro_calibration(orb_advert_t *mavlink_log_pub);
+namespace calibration
+{
 
-#endif /* GYRO_CALIBRATION_H_ */
+void set_tune(int tune);
+
+void tune_positive();
+void tune_negative();
+void tune_neutral();
+
+void rgbled_set_color_and_mode(uint8_t color, uint8_t mode);
+
+void rgbled_set_color_and_mode(uint8_t color, uint8_t mode, uint8_t blinks, uint8_t prio);
+
+} // namespace calibration

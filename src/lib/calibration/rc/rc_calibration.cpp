@@ -41,22 +41,21 @@
 #include <px4_defines.h>
 
 #include "rc_calibration.h"
-#include "commander_helper.h"
 
-#include <poll.h>
-#include <unistd.h>
-#include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <systemlib/mavlink_log.h>
 #include <parameters/param.h>
-#include <systemlib/err.h>
+
+namespace calibration
+{
 
 int do_trim_calibration(orb_advert_t *mavlink_log_pub)
 {
 	int sub_man = orb_subscribe(ORB_ID(manual_control_setpoint));
 	usleep(400000);
-	struct manual_control_setpoint_s sp;
-	bool changed;
+
+	manual_control_setpoint_s sp{};
+	bool changed = false;
 	orb_check(sub_man, &changed);
 
 	if (!changed) {
@@ -69,16 +68,20 @@ int do_trim_calibration(orb_advert_t *mavlink_log_pub)
 	/* load trim values which are active */
 	float roll_trim_active;
 	param_get(param_find("TRIM_ROLL"), &roll_trim_active);
+
 	float pitch_trim_active;
 	param_get(param_find("TRIM_PITCH"), &pitch_trim_active);
+
 	float yaw_trim_active;
 	param_get(param_find("TRIM_YAW"), &yaw_trim_active);
 
 	/* get manual control scale values */
 	float roll_scale;
 	param_get(param_find("FW_MAN_R_SC"), &roll_scale);
+
 	float pitch_scale;
 	param_get(param_find("FW_MAN_P_SC"), &pitch_scale);
+
 	float yaw_scale;
 	param_get(param_find("FW_MAN_Y_SC"), &yaw_scale);
 
@@ -93,6 +96,7 @@ int do_trim_calibration(orb_advert_t *mavlink_log_pub)
 	*/
 	p = -sp.x * pitch_scale + pitch_trim_active;
 	int p2r = param_set(param_find("TRIM_PITCH"), &p);
+
 	p = sp.r * yaw_scale + yaw_trim_active;
 	int p3r = param_set(param_find("TRIM_YAW"), &p);
 
@@ -103,6 +107,9 @@ int do_trim_calibration(orb_advert_t *mavlink_log_pub)
 	}
 
 	mavlink_log_info(mavlink_log_pub, "trim cal done");
+
 	px4_close(sub_man);
 	return PX4_OK;
 }
+
+} // namespace calibration

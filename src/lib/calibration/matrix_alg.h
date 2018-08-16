@@ -1,6 +1,7 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
+ *   Author: Siddharth Bharat Purohit <sibpurohit@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,24 +33,16 @@
  ****************************************************************************/
 
 /**
- * @file baro_calibration.cpp
- * Barometer calibration routine
+ * @file matrix_alg.h
+ *
+ * Matrix algebra on raw arrays
  */
 
-#include "baro_calibration.h"
 
-#include <poll.h>
+#pragma once
+
+#include <inttypes.h>
+#include <string.h>
 #include <math.h>
-#include <fcntl.h>
-#include <px4_defines.h>
-#include <drivers/drv_hrt.h>
-#include <uORB/topics/sensor_combined.h>
-#include <drivers/drv_baro.h>
-#include <systemlib/mavlink_log.h>
-#include <parameters/param.h>
 
-int do_baro_calibration(orb_advert_t *mavlink_log_pub)
-{
-	// TODO implement this
-	return PX4_ERROR;
-}
+bool mat_inverse(float *A, float *inv, uint8_t n);

@@ -1,7 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2013 PX4 Development Team. All rights reserved.
- *   Author: Siddharth Bharat Purohit <sibpurohit@gmail.com>
+ *   Copyright (c) 2013 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,18 +32,22 @@
  ****************************************************************************/
 
 /**
- * @file matrix_alg.h
+ * @file accelerometer_calibration.h
  *
- * Matrix algebra on raw arrays
+ * Definition of accelerometer calibration.
+ *
+ * @author Anton Babushkin <anton.babushkin@me.com>
  */
-
 
 #pragma once
 
-#include <inttypes.h>
-#include <string.h>
-#include <math.h>
+#include <stdint.h>
+#include <uORB/uORB.h>
 
-float *mat_mul(float *A, float *B, uint8_t n);
-bool mat_inverse(float *A, float *inv, uint8_t n);
-bool inverse4x4(float m[], float invOut[]);
+namespace calibration
+{
+
+int do_accel_calibration(orb_advert_t *mavlink_log_pub);
+int do_level_calibration(orb_advert_t *mavlink_log_pub);
+
+} // namespace calibration
