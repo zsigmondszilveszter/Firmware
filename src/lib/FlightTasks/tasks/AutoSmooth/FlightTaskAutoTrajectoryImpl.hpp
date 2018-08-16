@@ -72,8 +72,12 @@ private:
 	};
 	TrajectoryState _traj_state{TrajectoryState::Hover};
 
+	float _bezier_threshold = 0;
+
 	bool _control_points_update = true;
 	bool _pt_0_reached_once = false;
 
 	void _update_control_points(); /**< Update Bezier control points */
+	void _update_bezier();
+	void _update_line();
 };
