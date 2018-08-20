@@ -136,22 +136,25 @@ void FlightTaskAutoTrajectoryImpl::_generateSetpoints()
 
 void FlightTaskAutoTrajectoryImpl::_update_control_points()
 {
+	float pt_0_target_length = NAV_ACC_RAD.get() + BEZ_LINE_THRESHOLD;
+	float pt_1_target_length = NAV_ACC_RAD.get() + BEZ_LINE_THRESHOLD;
+
+	if ((_next_wp - _target).length() < NAV_ACC_RAD.get())
+	{
+		pt_1_target_length = (_next_wp - _target).length() / 2.0f;
+	}
+
+	if ((_target - _prev_wp).length() < NAV_ACC_RAD.get())
+	{
+		pt_0_target_length = (_target - _prev_wp).length() / 2.0f;
+	}
+
 	Vector3f u_prev_to_target = (_target - _prev_wp).unit_or_zero();
 	Vector3f u_target_to_next = (_next_wp - _target).unit_or_zero();
 
-	_pt_0 = _target - (u_prev_to_target * (NAV_ACC_RAD.get() + BEZ_LINE_THRESHOLD));
-	_pt_1 = _target + (u_target_to_next * (NAV_ACC_RAD.get() +  BEZ_LINE_THRESHOLD));
+	_pt_0 = _target - (u_prev_to_target * pt_0_target_length);
+	_pt_1 = _target + (u_target_to_next * pt_1_target_length);
 
-	Vector3f pt_0_next = _next_wp - (u_target_to_next * (NAV_ACC_RAD.get() + BEZ_LINE_THRESHOLD));
-
-	if ((pt_0_next - _pt_1) * u_target_to_next < 0.0f) {
-		// pt_0_next is closer to target than _pt_1. set _pt_1 to pt_0_next
-		_pt_1 = pt_0_next;
-	}
-
-	if ((_pt_1 - _prev_wp) * u_prev_to_target < 0.0f) {
-		_pt_1 = _prev_wp + u_prev_to_target * (_target - _prev_wp).length() / 2.0f;
-	}
 }
 
 void FlightTaskAutoTrajectoryImpl::_update_bezier()
