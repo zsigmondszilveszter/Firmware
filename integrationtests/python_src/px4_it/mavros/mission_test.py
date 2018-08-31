@@ -251,6 +251,9 @@ class MavrosMissionTest(MavrosTestCommon):
                                    10, -1)
         self.wait_for_mav_type(10)
 
+        # sleep for 5 seconds to gather prearm data
+        rospy.sleep(5.)
+
         # push waypoints to FCU and start mission
         self.send_wps(wps, 30)
         self.log_topic_vars()
