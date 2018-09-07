@@ -699,6 +699,66 @@ MPU9250::_set_sample_rate(unsigned desired_sample_rate_hz)
 		_sample_rate = 1100 / div;
 		break;
 	}
+
+	/*
+	 * Adjust pollrate to new sample rate.
+	 */
+	_set_pollrate(_sample_rate);
+}
+
+/*
+ * Set poll rate
+ */
+int
+MPU9250::_set_pollrate(unsigned long rate)
+{
+	if (rate == 0) {
+		return -EINVAL;
+
+	} else {
+		/* do we need to start internal polling? */
+		bool want_start = (_call_interval == 0);
+
+		/* convert hz to hrt interval via microseconds */
+		unsigned ticks = 1000000 / rate;
+
+		/* check against maximum sane rate */
+		if (ticks < 1000) {
+			return -EINVAL;
+		}
+
+		// adjust filters
+		float cutoff_freq_hz = _accel_filter_x.get_cutoff_freq();
+		float sample_rate = 1.0e6f / ticks;
+		_accel_filter_x.set_cutoff_frequency(sample_rate, cutoff_freq_hz);
+		_accel_filter_y.set_cutoff_frequency(sample_rate, cutoff_freq_hz);
+		_accel_filter_z.set_cutoff_frequency(sample_rate, cutoff_freq_hz);
+
+
+		float cutoff_freq_hz_gyro = _gyro_filter_x.get_cutoff_freq();
+		_gyro_filter_x.set_cutoff_frequency(sample_rate, cutoff_freq_hz_gyro);
+		_gyro_filter_y.set_cutoff_frequency(sample_rate, cutoff_freq_hz_gyro);
+		_gyro_filter_z.set_cutoff_frequency(sample_rate, cutoff_freq_hz_gyro);
+
+		/* update interval for next measurement */
+		/* XXX this is a bit shady, but no other way to adjust... */
+		_call_interval = ticks;
+
+		/*
+		  set call interval faster than the sample time. We
+		  then detect when we have duplicate samples and reject
+		  them. This prevents aliasing due to a beat between the
+		  stm32 clock and the mpu9250 clock
+		 */
+		_call.period = _call_interval - MPU9250_TIMER_REDUCTION;
+
+		/* if we need to start the poll state machine, do it */
+		if (want_start) {
+			start();
+		}
+
+		return OK;
+	}
 }
 
 /*
@@ -981,50 +1041,8 @@ MPU9250::accel_ioctl(struct file *filp, int cmd, unsigned long arg)
 				return accel_ioctl(filp, SENSORIOCSPOLLRATE, MPU9250_ACCEL_DEFAULT_RATE);
 
 			/* adjust to a legal polling interval in Hz */
-			default: {
-					/* do we need to start internal polling? */
-					bool want_start = (_call_interval == 0);
-
-					/* convert hz to hrt interval via microseconds */
-					unsigned ticks = 1000000 / arg;
-
-					/* check against maximum sane rate */
-					if (ticks < 1000) {
-						return -EINVAL;
-					}
-
-					// adjust filters
-					float cutoff_freq_hz = _accel_filter_x.get_cutoff_freq();
-					float sample_rate = 1.0e6f / ticks;
-					_accel_filter_x.set_cutoff_frequency(sample_rate, cutoff_freq_hz);
-					_accel_filter_y.set_cutoff_frequency(sample_rate, cutoff_freq_hz);
-					_accel_filter_z.set_cutoff_frequency(sample_rate, cutoff_freq_hz);
-
-
-					float cutoff_freq_hz_gyro = _gyro_filter_x.get_cutoff_freq();
-					_gyro_filter_x.set_cutoff_frequency(sample_rate, cutoff_freq_hz_gyro);
-					_gyro_filter_y.set_cutoff_frequency(sample_rate, cutoff_freq_hz_gyro);
-					_gyro_filter_z.set_cutoff_frequency(sample_rate, cutoff_freq_hz_gyro);
-
-					/* update interval for next measurement */
-					/* XXX this is a bit shady, but no other way to adjust... */
-					_call_interval = ticks;
-
-					/*
-					  set call interval faster than the sample time. We
-					  then detect when we have duplicate samples and reject
-					  them. This prevents aliasing due to a beat between the
-					  stm32 clock and the mpu9250 clock
-					 */
-					_call.period = _call_interval - MPU9250_TIMER_REDUCTION;
-
-					/* if we need to start the poll state machine, do it */
-					if (want_start) {
-						start();
-					}
-
-					return OK;
-				}
+			default:
+				return _set_pollrate(arg);
 			}
 		}
 

@@ -705,6 +705,11 @@ private:
 	void _set_sample_rate(unsigned desired_sample_rate_hz);
 
 	/*
+	  set poll rate
+	 */
+	int _set_pollrate(unsigned long rate);
+
+	/*
 	  check that key registers still have the right value
 	 */
 	void check_registers(void);

@@ -126,7 +126,7 @@ set BOARD_FMUV3 0
 if ver hwcmp PX4FMU_V2
 then
 	# External I2C bus
-	hmc5883 -C -T -X start
+	#hmc5883 -C -T -X start
 	lis3mdl -X start
 	ist8310 -C start
 
