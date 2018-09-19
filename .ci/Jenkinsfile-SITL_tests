@@ -105,11 +105,31 @@ pipeline {
             ],
 
             [
+              name: "FW (delta_wing)",
+              test: "mavros_posix_test_mission.test",
+              mission: "FW_mission_1",
+              vehicle: "delta_wing"
+            ],
+
+            [
               name: "MC_box",
               test: "mavros_posix_test_mission.test",
               mission: "MC_mission_box",
               vehicle: "iris"
             ],
+            [
+              name: "MC_box (flow)",
+              test: "mavros_posix_test_mission.test",
+              mission: "MC_mission_box",
+              vehicle: "iris_opt_flow"
+            ],
+            [
+              name: "MC_box (typhoon_h480)",
+              test: "mavros_posix_test_mission.test",
+              mission: "MC_mission_box",
+              vehicle: "typhoon_h480"
+            ],
+
             [
               name: "MC_offboard_att",
               test: "mavros_posix_tests_offboard_attctl.test",
