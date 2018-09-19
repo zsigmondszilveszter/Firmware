@@ -201,23 +201,25 @@ MPU9250::MPU9250(device::Device *interface, device::Device *mag_interface, const
 		_accel->_device_id.devid_s.address = _interface->get_device_address();
 	}
 
-	/* Prime _gyro with common devid. */
-	/* Set device parameters and make sure parameters of the bus device are adopted */
-	_gyro->_device_id.devid = _accel->_device_id.devid;
-	_gyro->_device_id.devid_s.devtype = DRV_GYR_DEVTYPE_MPU9250;
-	_gyro->_device_id.devid_s.bus_type = _interface->get_device_bus_type();
-	_gyro->_device_id.devid_s.bus = _interface->get_device_bus();
-	_gyro->_device_id.devid_s.address = _interface->get_device_address();
+	if (_gyro != nullptr) {
+		/* Prime _gyro with common devid. */
+		/* Set device parameters and make sure parameters of the bus device are adopted */
+		_gyro->_device_id.devid = 0;
+		_gyro->_device_id.devid_s.devtype = DRV_GYR_DEVTYPE_MPU9250;
+		_gyro->_device_id.devid_s.bus_type = _interface->get_device_bus_type();
+		_gyro->_device_id.devid_s.bus = _interface->get_device_bus();
+		_gyro->_device_id.devid_s.address = _interface->get_device_address();
+	}
 
 	/* Prime _mag with common devid. */
-	_mag->_device_id.devid = _accel->_device_id.devid;
+	_mag->_device_id.devid = 0;
 	_mag->_device_id.devid_s.devtype = DRV_MAG_DEVTYPE_MPU9250;
 	_mag->_device_id.devid_s.bus_type = _interface->get_device_bus_type();
 	_mag->_device_id.devid_s.bus = _interface->get_device_bus();
 	_mag->_device_id.devid_s.address = _interface->get_device_address();
 
 	/* For an independent mag, ensure that it is connected to the i2c bus */
-	_interface->set_device_type(_accel->_device_id.devid_s.devtype);
+	_interface->set_device_type(DRV_ACC_DEVTYPE_MPU9250);
 
 	// default accel scale factors
 	_accel_scale.x_offset = 0;
