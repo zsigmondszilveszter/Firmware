@@ -1404,6 +1404,7 @@ MPU9250::stop()
 
 	} else {
 #ifdef USE_I2C
+		_call_interval = 0;
 		work_cancel(HPWORK, &_work);
 #endif
 	}
