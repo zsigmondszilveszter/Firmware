@@ -248,8 +248,10 @@ MPU9250::~MPU9250()
 	/* make sure we are truly inactive */
 	stop();
 
-	orb_unadvertise(_accel_topic);
-	orb_unadvertise(_gyro->_gyro_topic);
+	if (!_magnetometer_only) {
+		orb_unadvertise(_accel_topic);
+		orb_unadvertise(_gyro->_gyro_topic);
+	}
 
 	/* delete the accel subdriver */
 	delete _accel;
@@ -316,7 +318,6 @@ MPU9250::init()
 		PX4_ERR("Exiting! Device failed to take initialization");
 		return ret;
 	}
-
 
 	if (!_magnetometer_only) {
 
@@ -701,11 +702,6 @@ MPU9250::_set_sample_rate(unsigned desired_sample_rate_hz)
 		_sample_rate = 1100 / div;
 		break;
 	}
-
-	/*
-	 * Adjust pollrate to new sample rate.
-	 */
-	_set_pollrate(_sample_rate);
 }
 
 /*
