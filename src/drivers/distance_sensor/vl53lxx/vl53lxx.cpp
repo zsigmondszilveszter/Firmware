@@ -69,12 +69,14 @@
 #include <board_config.h>
 
 /* Configuration Constants */
-#define VL53LXX_BUS_DEFAULT PX4_I2C_BUS_EXPANSION
+//#define VL53LXX_BUS_DEFAULT PX4_I2C_BUS_EXPANSION
+#define VL53LXX_BUS_DEFAULT PX4_I2C_BUS_EXPANSION1
 
 #define VL53LXX_BASEADDR 0b0101001 // 7-bit address
+
 #define VL53LXX_DEVICE_PATH "/dev/vl53lxx"
 
-/* VL53LXX Registers addresses */
+/* VL53L0X Registers addresses */
 #define VHV_CONFIG_PAD_SCL_SDA_EXTSUP_HW_REG 0x89
 #define MSRC_CONFIG_CONTROL_REG 0x60
 #define FINAL_RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT_REG 0x44
@@ -100,6 +102,46 @@
 
 #define VL53LXX_MAX_RANGING_DISTANCE 2.0f
 #define VL53LXX_MIN_RANGING_DISTANCE 0.0f
+
+/* VL53L0X Registers addresses */
+#define VL53L1X_IDENTIFICATION_MODEL_ID 0x010F
+
+#define SOFT_RESET 0x0000
+#define FIRMWARE_SYSTEM_STATUS 0x00E5
+#define PAD_I2C_HV_EXTSUP_CONFIG 0x002E
+#define OSC_MEASURED_FAST_OSC_FREQUENCY 0x0006
+#define RESULT_OSC_CALIBRATE_VAL 0x00DE
+#define DSS_CONFIG_TARGET_TOTAL_RATE_MCPS 0x0024
+#define GPIO_TIO_HV_STATUS 0x0031
+#define SIGMA_ESTIMATOR_EFFECTIVE_PULSE_WIDTH_NS 0x0036
+#define SIGMA_ESTIMATOR_EFFECTIVE_AMBIENT_WIDTH_NS 0x0037
+#define ALGO_CROSSTALK_COMPENSATION_VALID_HEIGHT_MM 0x0039
+#define ALGO_RANGE_IGNORE_VALID_HEIGHT_MM 0x003E
+#define ALGO_RANGE_MIN_CLIP 0x003F
+#define ALGO_CONSISTENCY_CHECK_TOLERANCE 0x0040
+#define SYSTEM_THRESH_RATE_HIGH 0x0050
+#define SYSTEM_THRESH_RATE_LOW 0x0052
+#define DSS_CONFIG_APERTURE_ATTENUATION 0x0057
+#define RANGE_CONFIG_SIGMA_THRESH 0x0064
+#define RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT_MCPS 0x0066
+#define SYSTEM_GROUPED_PARAMETER_HOLD_0 0x0071
+#define SYSTEM_GROUPED_PARAMETER_HOLD_1 0x007C
+#define SD_CONFIG_QUANTIFIER 0x007E
+#define SYSTEM_GROUPED_PARAMETER_HOLD 0x0082
+#define SYSTEM_SEED_CONFIG 0x0077
+#define SYSTEM_SEQUENCE_CONFIG 0x0081
+#define DSS_CONFIG_MANUAL_EFFECTIVE_SPADS_SELECT 0x0F30
+#define DSS_CONFIG_ROI_MODE_CONTROL 0x004F
+#define RANGE_CONFIG_VCSEL_PERIOD_A 0x0060
+#define RANGE_CONFIG_VCSEL_PERIOD_B 0x0063
+#define RANGE_CONFIG_VALID_PHASE_HIGH 0x0069
+#define SD_CONFIG_WOI_SD0 0x0078
+#define SD_CONFIG_WOI_SD1 0x0079
+#define SD_CONFIG_INITIAL_PHASE_SD0 0x007A
+#define SD_CONFIG_INITIAL_PHASE_SD1 0x007B
+#define SYSTEM_INTERMEASUREMENT_PERIOD 0x006C
+#define SYSTEM_INTERRUPT_CLEAR 0x0086
+#define SYSTEM_MODE_START 0x0087
 
 #ifndef CONFIG_SCHED_WORKQUEUE
 # error This requires CONFIG_SCHED_WORKQUEUE.
@@ -147,6 +189,13 @@ private:
 
 	uint8_t _stop_variable;
 
+	uint16_t _fast_osc_frequency;
+	uint16_t _osc_calibrate_val;
+
+	uint16_t _measured_distance;
+
+	uint32_t _poll;
+
 
 	/**
 	* Initialise the automatic measurement state machine and start it.
@@ -171,6 +220,11 @@ private:
 
 	int writeRegisterMulti(uint8_t reg_address, uint8_t *value, uint8_t length);
 	int readRegisterMulti(uint8_t reg_address, uint8_t *value, uint8_t length);
+
+	int writeRegisterMulti16(uint16_t reg_address, uint8_t *value, uint8_t length);
+	int readRegisterMulti16(uint16_t reg_address, uint8_t *value, uint8_t length);
+	int writeRegister16(uint16_t reg_address, uint8_t value);
+	int readRegister16(uint16_t reg_address, uint8_t &value);
 
 	int sensorInit();
 	bool spadCalculations();
@@ -207,7 +261,11 @@ VL53LXX::VL53LXX(uint8_t rotation, int bus, int address) :
 	_distance_sensor_topic(nullptr),
 	_sample_perf(perf_alloc(PC_ELAPSED, "vl53lxx_read")),
 	_comms_errors(perf_alloc(PC_COUNT, "vl53lxx_com_err")),
-	_stop_variable(0)
+	_stop_variable(0),
+	_fast_osc_frequency(0),
+	_osc_calibrate_val(0),
+	_measured_distance(0),
+	_poll(0)
 {
 	// up the retries since the device misses the first measure attempts
 	I2C::_retries = 3;
@@ -246,54 +304,172 @@ VL53LXX::~VL53LXX()
 int
 VL53LXX::sensorInit()
 {
-	uint8_t val = 0;
-	int ret = OK;
-	float rate_limit;
-	uint8_t rate_limit_split[2];
+	// uint8_t val = 0;
+	// int ret = OK;
+	// float rate_limit;
+	// uint8_t rate_limit_split[2];
 
-	// I2C at 2.8V on sensor side of level shifter
-	ret |= readRegister(VHV_CONFIG_PAD_SCL_SDA_EXTSUP_HW_REG, val);
+	// // I2C at 2.8V on sensor side of level shifter
+	// ret |= readRegister(VHV_CONFIG_PAD_SCL_SDA_EXTSUP_HW_REG, val);
 
-	if (ret != OK) {
-		ret = PX4_ERROR;
-		return ret;
+	// if (ret != OK) {
+	// 	ret = PX4_ERROR;
+	// 	return ret;
+	// }
+
+	// ret |= writeRegister(VHV_CONFIG_PAD_SCL_SDA_EXTSUP_HW_REG, val | 0x01);
+
+	// // set I2C to standard mode
+	// ret |= writeRegister(0x88, 0x00);
+
+	// ret |= writeRegister(0x80, 0x01);
+	// ret |= writeRegister(0xFF, 0x01);
+	// ret |= writeRegister(0x00, 0x00);
+	// ret |= readRegister(0x91, val);
+	// ret |= writeRegister(0x00, 0x01);
+	// ret |= writeRegister(0xFF, 0x00);
+	// ret |= writeRegister(0x80, 0x00);
+
+	// if (ret != OK) {
+	// 	ret = PX4_ERROR;
+	// 	return ret;
+	// }
+
+	// _stop_variable = val;
+
+	// // disable SIGNAL_RATE_MSRC (bit 1) and SIGNAL_RATE_PRE_RANGE (bit 4) limit checks
+	// readRegister(MSRC_CONFIG_CONTROL_REG, val);
+	// writeRegister(MSRC_CONFIG_CONTROL_REG, val | 0x12);
+
+	// // Set signal rate limit to 0.1
+	// rate_limit = 0.1 * 65536;
+	// rate_limit_split[0] = (((uint16_t)rate_limit) >> 8);
+	// rate_limit_split[1] = (uint16_t)rate_limit;
+
+	// writeRegisterMulti(FINAL_RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT_REG, &rate_limit_split[0], 2);
+	// writeRegister(SYSTEM_SEQUENCE_CONFIG_REG, 0xFF);
+
+	// spadCalculations();
+
+	// return ret;
+
+	// check model ID and module type registers (values specified in datasheet)
+	uint8_t read_multi[2];
+
+	readRegisterMulti16(VL53L1X_IDENTIFICATION_MODEL_ID, &read_multi[0], 2);
+
+	if ((read_multi[0] << 8 | read_multi[1]) != 0xEACC) {
+		return PX4_ERROR;
 	}
 
-	ret |= writeRegister(VHV_CONFIG_PAD_SCL_SDA_EXTSUP_HW_REG, val | 0x01);
+	printf("sensor id: 0x%x%x\n", read_multi[0], read_multi[1]); //for debug only
 
-	// set I2C to standard mode
-	ret |= writeRegister(0x88, 0x00);
+	// software reset
+	writeRegister16(SOFT_RESET, 0x00);
+	usleep(100);
+	writeRegister16(SOFT_RESET, 0x01);
 
-	ret |= writeRegister(0x80, 0x01);
-	ret |= writeRegister(0xFF, 0x01);
-	ret |= writeRegister(0x00, 0x00);
-	ret |= readRegister(0x91, val);
-	ret |= writeRegister(0x00, 0x01);
-	ret |= writeRegister(0xFF, 0x00);
-	ret |= writeRegister(0x80, 0x00);
+	// give it some time to boot
+	usleep(1000);
 
-	if (ret != OK) {
-		ret = PX4_ERROR;
-		return ret;
+	// poll for boot completion
+	uint8_t fw_status = 0;
+	readRegister16(FIRMWARE_SYSTEM_STATUS, fw_status);
+
+	while ((fw_status & 0x01) == 0) {
+		usleep(1000);
+		readRegister16(FIRMWARE_SYSTEM_STATUS, fw_status);
 	}
 
-	_stop_variable = val;
+	printf("fw status: 0x%x\n", fw_status); //for debug only
 
-	// disable SIGNAL_RATE_MSRC (bit 1) and SIGNAL_RATE_PRE_RANGE (bit 4) limit checks
-	readRegister(MSRC_CONFIG_CONTROL_REG, val);
-	writeRegister(MSRC_CONFIG_CONTROL_REG, val | 0x12);
+	uint8_t i2c_config = 0;
+	readRegister16(PAD_I2C_HV_EXTSUP_CONFIG, i2c_config);
+	printf("i2c config: 0x%x\n", i2c_config); //for debug only
+	writeRegister16(PAD_I2C_HV_EXTSUP_CONFIG, i2c_config | 0x01);
 
-	// Set signal rate limit to 0.1
-	rate_limit = 0.1 * 65536;
-	rate_limit_split[0] = (((uint16_t)rate_limit) >> 8);
-	rate_limit_split[1] = (uint16_t)rate_limit;
+	// store oscillator info for later use
+	readRegisterMulti16(OSC_MEASURED_FAST_OSC_FREQUENCY, &read_multi[0], 2);
+	_fast_osc_frequency = read_multi[0] << 8 | read_multi[1];
+	printf("fast osc frequency: 0x%x\n", _fast_osc_frequency); //for debug only
 
-	writeRegisterMulti(FINAL_RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT_REG, &rate_limit_split[0], 2);
-	writeRegister(SYSTEM_SEQUENCE_CONFIG_REG, 0xFF);
+	readRegisterMulti16(RESULT_OSC_CALIBRATE_VAL, &read_multi[0], 2);
+	_osc_calibrate_val = read_multi[0] << 8 | read_multi[1];
+	printf("osc calibrate val: 0x%x\n", _osc_calibrate_val); //for debug only
 
-	spadCalculations();
+	uint8_t bytes[4] = {0, 0, 0, 0};
 
-	return ret;
+	// static config
+	bytes[0] = 0x0A;
+	writeRegisterMulti16(DSS_CONFIG_TARGET_TOTAL_RATE_MCPS, &bytes[0], 2); //0x0A00
+	writeRegister16(GPIO_TIO_HV_STATUS, 0x02);
+	writeRegister16(SIGMA_ESTIMATOR_EFFECTIVE_PULSE_WIDTH_NS, 8);
+	writeRegister16(SIGMA_ESTIMATOR_EFFECTIVE_AMBIENT_WIDTH_NS, 16);
+	writeRegister16(ALGO_CROSSTALK_COMPENSATION_VALID_HEIGHT_MM, 0x01);
+	writeRegister16(ALGO_RANGE_IGNORE_VALID_HEIGHT_MM, 0xFF);
+	writeRegister16(ALGO_RANGE_MIN_CLIP, 0);
+	writeRegister16(ALGO_CONSISTENCY_CHECK_TOLERANCE, 2);
+
+	// general config
+	bytes[0] = 0x00;
+	writeRegisterMulti16(SYSTEM_THRESH_RATE_HIGH, &bytes[0], 2); //0x0000
+	writeRegisterMulti16(SYSTEM_THRESH_RATE_LOW, &bytes[0], 2); //0x0000
+	writeRegister16(DSS_CONFIG_APERTURE_ATTENUATION, 0x38);
+
+	// timing config
+	bytes[0] = (360 >> 8) & 0xFF;
+	bytes[1] = 360 & 0xFF;
+	writeRegisterMulti16(RANGE_CONFIG_SIGMA_THRESH, &bytes[0], 2); //360
+
+	bytes[0] = (192 >> 8) & 0xFF;
+	bytes[1] = 192 & 0xFF;
+	writeRegisterMulti16(RANGE_CONFIG_MIN_COUNT_RATE_RTN_LIMIT_MCPS, &bytes[0], 2); //192
+
+	// dynamic config
+	writeRegister16(SYSTEM_GROUPED_PARAMETER_HOLD_0, 0x01);
+	writeRegister16(SYSTEM_GROUPED_PARAMETER_HOLD_1, 0x01);
+	writeRegister16(SD_CONFIG_QUANTIFIER, 2);
+
+	// preset mode standard ranging
+	writeRegister16(SYSTEM_GROUPED_PARAMETER_HOLD, 0x00);
+	writeRegister16(SYSTEM_SEED_CONFIG, 1);
+
+	// low power auto mode config
+	writeRegister16(SYSTEM_SEQUENCE_CONFIG, 0x8B); // VHV, PHASECAL, DSS1, RANGE
+
+	bytes[0] = 200;
+	bytes[1] = 0x00;
+	writeRegisterMulti16(DSS_CONFIG_MANUAL_EFFECTIVE_SPADS_SELECT, &bytes[0], 2); //200<<8
+	writeRegister16(DSS_CONFIG_ROI_MODE_CONTROL, 2); // REQUESTED_EFFFECTIVE_SPADS
+
+	// set long distance range (switch can be added for short and medium)
+	// timing config
+	writeRegister16(RANGE_CONFIG_VCSEL_PERIOD_A, 0x0F);
+	writeRegister16(RANGE_CONFIG_VCSEL_PERIOD_B, 0x0D);
+	writeRegister16(RANGE_CONFIG_VALID_PHASE_HIGH, 0xB8);
+
+	// dynamic config
+	writeRegister16(SD_CONFIG_WOI_SD0, 0x0F);
+	writeRegister16(SD_CONFIG_WOI_SD1, 0x0D);
+	writeRegister16(SD_CONFIG_INITIAL_PHASE_SD0, 14);
+	writeRegister16(SD_CONFIG_INITIAL_PHASE_SD1, 14);
+
+
+	// set measurement timing budget (default???)
+
+
+	// set to continuous mode
+	uint32_t period = 50 * _osc_calibrate_val; // 50 ms
+	bytes[0] = (period >> 24) & 0xFF;
+	bytes[1] = (period >> 16) & 0xFF;
+	bytes[2] = (period >> 8) & 0xFF;
+	bytes[3] = period & 0xFF;
+	writeRegisterMulti16(SYSTEM_INTERMEASUREMENT_PERIOD, &bytes[0], 4);
+
+	writeRegister16(SYSTEM_INTERRUPT_CLEAR, 0x01); // sys_interrupt_clear_range
+	writeRegister16(SYSTEM_MODE_START, 0x40); // mode_range__timed
+
+	return PX4_OK;
 
 }
 
@@ -488,12 +664,74 @@ VL53LXX::readRegister(uint8_t reg_address, uint8_t &value)
 
 
 int
+VL53LXX::readRegister16(uint16_t reg_address, uint8_t &value)
+{
+	int ret;
+
+	uint8_t address_ext[2];
+
+	address_ext[0] = (reg_address >> 8) & 0xFF;
+	address_ext[1] = reg_address & 0xFF;
+
+	/* write register address to the sensor */
+	ret = transfer(&address_ext[0], 2, nullptr, 0);
+
+	if (OK != ret) {
+		perf_count(_comms_errors);
+		return ret;
+	}
+
+	/* read from the sensor */
+	ret = transfer(nullptr, 0, &value, 1);
+
+	if (OK != ret) {
+		perf_count(_comms_errors);
+		return ret;
+	}
+
+	return ret;
+
+}
+
+
+int
 VL53LXX::readRegisterMulti(uint8_t reg_address, uint8_t *value, uint8_t length)
 {
 	int ret;
 
 	/* write register address to the sensor */
 	ret = transfer(&reg_address, 1, nullptr, 0);
+
+	if (OK != ret) {
+		perf_count(_comms_errors);
+		return ret;
+	}
+
+	/* read from the sensor */
+	ret = transfer(nullptr, 0, &value[0], length);
+
+	if (OK != ret) {
+		perf_count(_comms_errors);
+		return ret;
+	}
+
+	return ret;
+
+}
+
+
+int
+VL53LXX::readRegisterMulti16(uint16_t reg_address, uint8_t *value, uint8_t length)
+{
+	int ret;
+
+	uint8_t address_ext[2];
+
+	address_ext[0] = (reg_address >> 8) & 0xFF;
+	address_ext[1] = reg_address & 0xFF;
+
+	/* write register address to the sensor */
+	ret = transfer(&address_ext[0], 2, nullptr, 0);
 
 	if (OK != ret) {
 		perf_count(_comms_errors);
@@ -535,6 +773,28 @@ VL53LXX::writeRegister(uint8_t reg_address, uint8_t value)
 
 
 int
+VL53LXX::writeRegister16(uint16_t reg_address, uint8_t value)
+{
+	int ret;
+	uint8_t cmd[3];
+
+	cmd[0] = (reg_address >> 8) & 0xFF;
+	cmd[1] = reg_address & 0xFF;
+	cmd[2] = value;
+
+	ret = transfer(&cmd[0], 3, nullptr, 0);
+
+	if (OK != ret) {
+		perf_count(_comms_errors);
+		return ret;
+	}
+
+	return ret;
+
+}
+
+
+int
 VL53LXX::writeRegisterMulti(uint8_t reg_address, uint8_t *value,
 			    uint8_t length) /* bytes are send in order as they are in the array */
 {
@@ -564,80 +824,144 @@ VL53LXX::writeRegisterMulti(uint8_t reg_address, uint8_t *value,
 
 
 int
-VL53LXX::measure()
+VL53LXX::writeRegisterMulti16(uint16_t reg_address, uint8_t *value,
+			      uint8_t length) /* bytes are send in order as they are in the array */
 {
-	int ret = OK;
-	uint8_t wait_for_measurement;
-	uint8_t system_start;
+	/* be careful: for uint16_t to send first higher byte */
+	int ret;
+	uint8_t cmd[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-	/*
-	 * Send the command to begin a measurement.
-	 */
-	const uint8_t cmd = RESULT_RANGE_STATUS_REG + 10;
-
-	if (_new_measurement) {
-
-		_new_measurement = false;
-
-		writeRegister(0x80, 0x01);
-		writeRegister(0xFF, 0x01);
-		writeRegister(0x00, 0x00);
-		writeRegister(0x91, _stop_variable);
-		writeRegister(0x00, 0x01);
-		writeRegister(0xFF, 0x00);
-		writeRegister(0x80, 0x00);
-
-		writeRegister(SYSRANGE_START_REG, 0x01);
-
-		readRegister(SYSRANGE_START_REG, system_start);
-
-		if ((system_start & 0x01) == 1) {
-			work_queue(LPWORK, &_work, (worker_t)&VL53LXX::cycle_trampoline, this,
-				   USEC2TICK(VL53LXX_US));		// reschedule every 1 ms until measurement is ready
-			ret = OK;
-			return ret;
-
-		} else {
-			_measurement_started = true;
-		}
-
+	if (length > 6 || length < 1) {
+		DEVICE_LOG("VL53LXX::writeRegisterMulti length out of range");
+		return PX4_ERROR;
 	}
 
-	if (!_collect_phase && !_measurement_started) {
+	cmd[0] = (reg_address >> 8) & 0xFF;
+	cmd[1] = reg_address & 0xFF;
 
-		readRegister(SYSRANGE_START_REG, system_start);
+	memcpy(&cmd[2], &value[0], length);
 
-		if ((system_start & 0x01) == 1) {
-			work_queue(LPWORK, &_work, (worker_t)&VL53LXX::cycle_trampoline, this,
-				   USEC2TICK(VL53LXX_US));		// reschedule every 1 ms until measurement is ready
-			ret = OK;
-			return ret;
-
-		} else {
-			_measurement_started = true;
-		}
-	}
-
-	readRegister(RESULT_INTERRUPT_STATUS_REG, wait_for_measurement);
-
-	if ((wait_for_measurement & 0x07) == 0) {
-		work_queue(LPWORK, &_work, (worker_t)&VL53LXX::cycle_trampoline, this,
-			   USEC2TICK(VL53LXX_US));		// reschedule every 1 ms until measurement is ready
-		ret = OK;
-		return ret;
-	}
-
-	_collect_phase = true;
-
-	ret = transfer(&cmd, sizeof(cmd), nullptr, 0);
+	ret = transfer(&cmd[0], length + 2, nullptr, 0);
 
 	if (OK != ret) {
 		perf_count(_comms_errors);
-		DEVICE_LOG("i2c::transfer returned %d", ret);
 		return ret;
 	}
 
 	return ret;
+
+}
+
+
+int
+VL53LXX::measure()
+{
+	// int ret = OK;
+	// uint8_t wait_for_measurement;
+	// uint8_t system_start;
+
+	// /*
+	//  * Send the command to begin a measurement.
+	//  */
+	// const uint8_t cmd = RESULT_RANGE_STATUS_REG + 10;
+
+	// if (_new_measurement) {
+
+	// 	_new_measurement = false;
+
+	// 	writeRegister(0x80, 0x01);
+	// 	writeRegister(0xFF, 0x01);
+	// 	writeRegister(0x00, 0x00);
+	// 	writeRegister(0x91, _stop_variable);
+	// 	writeRegister(0x00, 0x01);
+	// 	writeRegister(0xFF, 0x00);
+	// 	writeRegister(0x80, 0x00);
+
+	// 	writeRegister(SYSRANGE_START_REG, 0x01);
+
+	// 	readRegister(SYSRANGE_START_REG, system_start);
+
+	// 	if ((system_start & 0x01) == 1) {
+	// 		work_queue(LPWORK, &_work, (worker_t)&VL53LXX::cycle_trampoline, this,
+	// 			   USEC2TICK(VL53LXX_US));		// reschedule every 1 ms until measurement is ready
+	// 		ret = OK;
+	// 		return ret;
+
+	// 	} else {
+	// 		_measurement_started = true;
+	// 	}
+
+	// }
+
+	// if (!_collect_phase && !_measurement_started) {
+
+	// 	readRegister(SYSRANGE_START_REG, system_start);
+
+	// 	if ((system_start & 0x01) == 1) {
+	// 		work_queue(LPWORK, &_work, (worker_t)&VL53LXX::cycle_trampoline, this,
+	// 			   USEC2TICK(VL53LXX_US));		// reschedule every 1 ms until measurement is ready
+	// 		ret = OK;
+	// 		return ret;
+
+	// 	} else {
+	// 		_measurement_started = true;
+	// 	}
+	// }
+
+	// readRegister(RESULT_INTERRUPT_STATUS_REG, wait_for_measurement);
+
+	// if ((wait_for_measurement & 0x07) == 0) {
+	// 	work_queue(LPWORK, &_work, (worker_t)&VL53LXX::cycle_trampoline, this,
+	// 		   USEC2TICK(VL53LXX_US));		// reschedule every 1 ms until measurement is ready
+	// 	ret = OK;
+	// 	return ret;
+	// }
+
+	// _collect_phase = true;
+
+	// ret = transfer(&cmd, sizeof(cmd), nullptr, 0);
+
+	// if (OK != ret) {
+	// 	perf_count(_comms_errors);
+	// 	DEVICE_LOG("i2c::transfer returned %d", ret);
+	// 	return ret;
+	// }
+
+	// return ret;
+
+	// wait for data ready
+	uint8_t ready = 1;
+
+	readRegister16(GPIO_TIO_HV_STATUS, ready); // & 0x01) == 0;
+
+	while ((ready & 0x01) != 0) {
+		usleep(100);
+		readRegister16(GPIO_TIO_HV_STATUS, ready);
+	}
+
+	_poll++; // for debug only
+
+	// read 17 bytes
+	uint8_t add[2] = {0x89, 0x00}; //0x0089
+	uint8_t data[17];
+
+	int ret = transfer(&add[0], 2, &data[0], 17);
+
+	if (OK != ret) {
+		perf_count(_comms_errors);
+		printf("Measure error...\n"); // for debug only
+		return ret;
+	}
+
+	// take measurement
+	uint16_t range = ((data[13] << 8) | data[14]) & 0xFFFF;
+
+	_measured_distance = (uint16_t)(((uint32_t)range * 2011 + 0x0400) / 0x0800);
+
+	// clear interrupt
+	writeRegister16(SYSTEM_INTERRUPT_CLEAR, 0x01);
+
+	return PX4_OK;
 }
 
 
@@ -731,19 +1055,25 @@ VL53LXX::cycle()
 {
 	measure();
 
-	if (_collect_phase) {
+	work_queue(LPWORK,
+		   &_work,
+		   (worker_t)&VL53LXX::cycle_trampoline,
+		   this,
+		   _measure_ticks);
 
-		_collect_phase = false;
-		_new_measurement = true;
+	// if (_collect_phase) {
 
-		collect();
+	// 	_collect_phase = false;
+	// 	_new_measurement = true;
 
-		work_queue(LPWORK,
-			   &_work,
-			   (worker_t)&VL53LXX::cycle_trampoline,
-			   this,
-			   _measure_ticks);
-	}
+	// 	collect();
+
+	// 	work_queue(LPWORK,
+	// 		   &_work,
+	// 		   (worker_t)&VL53LXX::cycle_trampoline,
+	// 		   this,
+	// 		   _measure_ticks);
+	// }
 
 }
 
@@ -755,6 +1085,7 @@ VL53LXX::print_info()
 	perf_print_counter(_comms_errors);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	_reports->print_info("report queue");
+	printf("distance: %u\npoll:%u\n", _measured_distance, _poll);
 }
 
 
