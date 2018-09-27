@@ -247,6 +247,7 @@ MPU9250::~MPU9250()
 {
 	/* make sure we are truly inactive */
 	stop();
+	_call_interval = 0;
 
 	if (!_magnetometer_only) {
 		orb_unadvertise(_accel_topic);
@@ -1404,7 +1405,6 @@ MPU9250::stop()
 
 	} else {
 #ifdef USE_I2C
-		_call_interval = 0;
 		work_cancel(HPWORK, &_work);
 #endif
 	}
