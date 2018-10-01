@@ -57,6 +57,7 @@ set(msg_files
 	esc_report.msg
 	esc_status.msg
 	estimator_status.msg
+	flight_test_input.msg
 	follow_target.msg
 	geofence_result.msg
 	gps_dump.msg

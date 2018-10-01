@@ -628,6 +628,11 @@ void FixedwingAttitudeControl::run()
 				float pitch_sp = _att_sp.pitch_body;
 				float yaw_sp = _att_sp.yaw_body;
 
+				// flight test input injection
+				roll_sp = _flight_test_input.inject(7, roll_sp);
+				pitch_sp = _flight_test_input.inject(8, pitch_sp);
+				yaw_sp = _flight_test_input.inject(9, yaw_sp);
+
 				/* Prepare data for attitude controllers */
 				struct ECL_ControlData control_input = {};
 				control_input.roll = euler_angles.phi();
@@ -703,6 +708,11 @@ void FixedwingAttitudeControl::run()
 						control_input.roll_rate_setpoint = _roll_ctrl.get_desired_rate();
 						control_input.pitch_rate_setpoint = _pitch_ctrl.get_desired_rate();
 						control_input.yaw_rate_setpoint = _yaw_ctrl.get_desired_rate();
+
+						// flight test input injection
+						control_input.roll_rate_setpoint = _flight_test_input.inject(4, control_input.roll_rate_setpoint);
+						control_input.pitch_rate_setpoint = _flight_test_input.inject(5, control_input.pitch_rate_setpoint);
+						control_input.yaw_rate_setpoint = _flight_test_input.inject(6, control_input.yaw_rate_setpoint);
 
 						/* Run attitude RATE controllers which need the desired attitudes from above, add trim */
 						float roll_u = _roll_ctrl.control_euler_rate(control_input);
@@ -838,6 +848,11 @@ void FixedwingAttitudeControl::run()
 			_actuators.timestamp_sample = _att.timestamp;
 			_actuators_airframe.timestamp = hrt_absolute_time();
 			_actuators_airframe.timestamp_sample = _att.timestamp;
+
+			// flight test input injection
+			_actuators.control[0] = _flight_test_input.inject(1, _actuators.control[0]);
+			_actuators.control[1] = _flight_test_input.inject(2, _actuators.control[1]);
+			_actuators.control[2] = _flight_test_input.inject(3, _actuators.control[2]);
 
 			/* Only publish if any of the proper modes are enabled */
 			if (_vcontrol_mode.flag_control_rates_enabled ||

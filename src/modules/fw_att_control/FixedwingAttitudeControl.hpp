@@ -61,6 +61,7 @@
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 #include <vtol_att_control/vtol_type.h>
+#include <flight_test_input/flight_test_input.h>
 
 using matrix::Eulerf;
 using matrix::Quatf;
@@ -137,6 +138,8 @@ private:
 	float _battery_scale{1.0f};
 
 	bool _flag_control_attitude_enabled_last{false};
+
+	FlightTestInput _flight_test_input;
 
 	struct {
 		float p_tc;
