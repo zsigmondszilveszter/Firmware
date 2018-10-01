@@ -946,6 +946,10 @@ Navigator::get_acceptance_radius(float mission_item_radius)
 	// this might need locking against a commanded transition
 	// so that a stale _vstatus doesn't trigger an accepted mission item.
 
+	if (_vstatus.is_vtol && _vstatus.in_transition_mode) {
+		return radius;
+	}
+
 	const position_controller_status_s &pos_ctrl_status = _position_controller_status_sub.get();
 
 	if ((pos_ctrl_status.timestamp > _pos_sp_triplet.timestamp) && pos_ctrl_status.acceptance_radius > radius) {

@@ -96,22 +96,30 @@ MissionBlock::is_mission_item_reached()
 	case NAV_CMD_SET_CAMERA_MODE:
 		return true;
 
-	case NAV_CMD_DO_VTOL_TRANSITION:
+	case NAV_CMD_DO_VTOL_TRANSITION: {
 
-		/*
-		 * We wait half a second to give the transition command time to propagate.
-		 * Then monitor the transition status for completion.
-		 */
-		// TODO: check desired transition state achieved and drop _action_start
-		if (hrt_absolute_time() - _action_start > 500000 &&
-		    !_navigator->get_vstatus()->in_transition_mode) {
+			const uint8_t new_mode = _mission_item.params[0];
 
-			_action_start = 0;
-			return true;
+			if (new_mode == vtol_vehicle_status_s::VEHICLE_VTOL_STATE_TRANSITION_TO_FW) {
 
-		} else {
-			return false;
+				if (_navigator->get_vstatus()->is_rotary_wing) {
+					return false;
+
+				} else {
+					return true;
+				}
+
+			} else if (new_mode == vtol_vehicle_status_s::VEHICLE_VTOL_STATE_TRANSITION_TO_MC) {
+
+				if (_navigator->get_vstatus()->is_rotary_wing) {
+					return true;
+
+				} else {
+					return false;
+				}
+			}
 		}
+		break;
 
 	case NAV_CMD_DO_CHANGE_SPEED:
 	case NAV_CMD_DO_SET_HOME:
@@ -289,19 +297,19 @@ MissionBlock::is_mission_item_reached()
 			}
 
 			/* for vtol back transition calculate acceptance radius based on time and ground speed */
-			if (_mission_item.vtol_back_transition && !_navigator->get_vstatus()->is_rotary_wing) {
+			if (_navigator->get_vstatus()->is_vtol) {
+				if (_mission_item.vtol_back_transition && !_navigator->get_vstatus()->is_rotary_wing) {
 
-				float velocity = sqrtf(_navigator->get_local_position()->vx * _navigator->get_local_position()->vx +
-						       _navigator->get_local_position()->vy * _navigator->get_local_position()->vy);
+					float velocity = sqrtf(_navigator->get_local_position()->vx * _navigator->get_local_position()->vx +
+							       _navigator->get_local_position()->vy * _navigator->get_local_position()->vy);
 
-				const float back_trans_dec = _navigator->get_vtol_back_trans_deceleration();
-				const float reverse_delay = _navigator->get_vtol_reverse_delay();
+					const float back_trans_dec = _navigator->get_vtol_back_trans_deceleration();
+					const float reverse_delay = _navigator->get_vtol_reverse_delay();
 
-				if (back_trans_dec > FLT_EPSILON && velocity > FLT_EPSILON) {
-					mission_acceptance_radius = ((velocity / back_trans_dec / 2) * velocity) + reverse_delay * velocity;
-
+					if (back_trans_dec > FLT_EPSILON && velocity > FLT_EPSILON) {
+						mission_acceptance_radius = ((velocity / back_trans_dec / 2) * velocity) + reverse_delay * velocity;
+					}
 				}
-
 			}
 
 			if (dist >= 0.0f && dist <= mission_acceptance_radius
@@ -440,8 +448,6 @@ MissionBlock::issue_command(const mission_item_s &item)
 		}
 
 	} else {
-		_action_start = hrt_absolute_time();
-
 		// mission_item -> vehicle_command
 
 		// we're expecting a mission command item here so assign the "raw" inputs to the command

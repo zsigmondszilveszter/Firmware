@@ -326,9 +326,10 @@ Mission::set_execution_mode(const uint8_t mode)
 		case mission_result_s::MISSION_EXECUTION_MODE_NORMAL:
 		case mission_result_s::MISSION_EXECUTION_MODE_FAST_FORWARD:
 			if (mode == mission_result_s::MISSION_EXECUTION_MODE_REVERSE) {
+
 				// command a transition if in vtol mc mode
-				if (_navigator->get_vstatus()->is_rotary_wing &&
-				    _navigator->get_vstatus()->is_vtol &&
+				if (_navigator->get_vstatus()->is_vtol &&
+				    _navigator->get_vstatus()->is_rotary_wing &&
 				    !_navigator->get_land_detected()->landed) {
 
 					set_vtol_transition_item(&_mission_item, vtol_vehicle_status_s::VEHICLE_VTOL_STATE_FW);
@@ -336,6 +337,7 @@ Mission::set_execution_mode(const uint8_t mode)
 					position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 					pos_sp_triplet->previous = pos_sp_triplet->current;
 					generate_waypoint_from_heading(&pos_sp_triplet->current, _mission_item.yaw);
+
 					_navigator->set_position_setpoint_triplet_updated();
 					issue_command(_mission_item);
 				}
@@ -1106,7 +1108,7 @@ Mission::do_need_move_to_land()
 		float d_current = get_distance_to_next_waypoint(_mission_item.lat, _mission_item.lon,
 				  _navigator->get_global_position()->lat, _navigator->get_global_position()->lon);
 
-		return d_current > _navigator->get_acceptance_radius();
+		return (d_current > _navigator->get_acceptance_radius());
 	}
 
 	return false;

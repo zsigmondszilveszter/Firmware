@@ -129,7 +129,6 @@ protected:
 	bool _waypoint_yaw_reached{false};
 
 	hrt_abstime _time_first_inside_orbit{0};
-	hrt_abstime _action_start{0};
 	hrt_abstime _time_wp_reached{0};
 
 	orb_advert_t    _actuator_pub{nullptr};
