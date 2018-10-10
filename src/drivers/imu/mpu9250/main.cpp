@@ -275,11 +275,11 @@ start_bus(struct mpu9250_bus_option &bus, enum Rotation rotation, bool external,
 	 * Doing this through the mag device for the time being - it's always there, even in magnetometer only mode.
 	 * Using accel device for MPU6500.
 	 */
-	if(bus.device_type == MPU_DEVICE_TYPE_MPU6500) {
-	    fd = open(bus.accelpath, O_RDONLY);
-	}
-	else {
-	    fd = open(bus.magpath, O_RDONLY);
+	if (bus.device_type == MPU_DEVICE_TYPE_MPU6500) {
+		fd = open(bus.accelpath, O_RDONLY);
+
+	} else {
+		fd = open(bus.magpath, O_RDONLY);
 	}
 
 	if (fd < 0) {
@@ -332,9 +332,9 @@ start(enum MPU9250_BUS busid, enum Rotation rotation, bool external, bool magnet
 			continue;
 		}
 
-		if(bus_options[i].device_type == MPU_DEVICE_TYPE_MPU6500 && magnetometer_only) {
-		    // prevent starting MPU6500 in magnetometer only mode
-		    continue;
+		if (bus_options[i].device_type == MPU_DEVICE_TYPE_MPU6500 && magnetometer_only) {
+			// prevent starting MPU6500 in magnetometer only mode
+			continue;
 		}
 
 		started |= start_bus(bus_options[i], rotation, external, magnetometer_only);
