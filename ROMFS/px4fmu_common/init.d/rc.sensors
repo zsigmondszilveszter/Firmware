@@ -212,9 +212,9 @@ then
 		# sensor heating is available, but we disable it for now
 		param set SENS_EN_THERMAL 0        
         
-        # probe for ICM20948 (Here GPS) on external I2C. Rotation 6 (270° Yaw) is correct
-        # for a Here GNSS mounted in Flight direction
-        mpu9250 -X -M -R 6 start
+		# probe for ICM20948 (Here GPS) on external I2C. Rotation 6 (270 deg yaw)
+		# for the accel and gyro and rotation 4 (180 deg yaw)
+		mpu9250 -X -M -R 6 start
 
 		# external L3GD20H is rotated 180 degrees yaw
 		l3gd20 -X -R 4 start
@@ -342,6 +342,7 @@ then
 
 	# Possible external compasses
 	hmc5883 -C -T -X start
+	mpu9250 -X -M -R 6 start
 
 	# Possible external compasses
 	ist8310 -C -b 1 start
