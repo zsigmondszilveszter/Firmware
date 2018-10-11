@@ -362,8 +362,6 @@ MPU9250::init()
 			_accel_filter_y.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
 			_accel_filter_z.set_cutoff_frequency(MPU9250_ACCEL_DEFAULT_RATE, accel_cut);
 
-		} else {
-			PX4_ERR("IMU_ACCEL_CUTOFF param invalid");
 		}
 
 		param_t gyro_cut_ph = param_find("IMU_GYRO_CUTOFF");
@@ -376,12 +374,16 @@ MPU9250::init()
 			_gyro_filter_y.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
 			_gyro_filter_z.set_cutoff_frequency(MPU9250_GYRO_DEFAULT_RATE, gyro_cut);
 
-		} else {
-			PX4_ERR("IMU_GYRO_CUTOFF param invalid");
 		}
 
 		/* do CDev init for the accel device node */
 		ret = _accel->init();
+
+		/* if probe/setup failed, bail now */
+		if (ret != OK) {
+			DEVICE_DEBUG("accel init failed");
+			return ret;
+		}
 
 		/* do CDev init for the gyro device node */
 		ret = _gyro->init();
@@ -1105,7 +1107,7 @@ MPU9250::accel_ioctl(struct file *filp, int cmd, unsigned long arg)
 
 	default:
 		/* give it to the superclass */
-		return _gyro->ioctl(filp, cmd, arg);
+		return _accel->ioctl(filp, cmd, arg);
 	}
 }
 
