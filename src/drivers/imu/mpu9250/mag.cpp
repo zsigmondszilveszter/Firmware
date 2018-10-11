@@ -336,18 +336,52 @@ MPU9250_mag::read(struct file *filp, char *buffer, size_t buflen)
 int
 MPU9250_mag::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
+	/*
+	 * Repeated in MPU9250_accel::ioctl
+	 * Both accel and mag CDev could be unused in case of magnetometer only mode or MPU6500
+	 */
+
 	switch (cmd) {
 
 	case SENSORIOCRESET:
 		return ak8963_reset();
 
 	case SENSORIOCSPOLLRATE: {
-			/* mag is polled through main driver only */
-			return _parent->accel_ioctl(filp, cmd, arg);
+			switch (arg) {
+
+			/* switching to manual polling */
+			case SENSOR_POLLRATE_MANUAL:
+				_parent->stop();
+				_parent->_call_interval = 0;
+				return OK;
+
+			/* external signalling not supported */
+			case SENSOR_POLLRATE_EXTERNAL:
+
+			/* zero would be bad */
+			case 0:
+				return -EINVAL;
+
+			/* set default/max polling rate */
+			case SENSOR_POLLRATE_MAX:
+				return ioctl(filp, SENSORIOCSPOLLRATE, 1000);
+
+			case SENSOR_POLLRATE_DEFAULT:
+				return ioctl(filp, SENSORIOCSPOLLRATE, MPU9250_ACCEL_DEFAULT_RATE);
+
+			/* adjust to a legal polling interval in Hz */
+			default:
+				/* mag is polled through main driver only */
+				return _parent->_set_pollrate(arg);
+			}
 		}
 
 	case SENSORIOCGPOLLRATE:
-		return _parent->accel_ioctl(filp, cmd, arg);
+		if (_parent->_call_interval == 0) {
+			return SENSOR_POLLRATE_MANUAL;
+		}
+
+		return 1000000 / _parent->_call_interval;
 
 	case SENSORIOCSQUEUEDEPTH: {
 			/* lower bound is mandatory, upper bound is a sanity check */

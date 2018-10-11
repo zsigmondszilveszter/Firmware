@@ -125,7 +125,58 @@ MPU9250_gyro::ioctl(struct file *filp, int cmd, unsigned long arg)
 		return (int)CDev::ioctl(filp, cmd, arg);
 		break;
 
+	/* these are shared with the accel side */
+	case SENSORIOCSPOLLRATE:
+	case SENSORIOCGPOLLRATE:
+	case SENSORIOCRESET:
+		return _parent->_accel->ioctl(filp, cmd, arg);
+
+	case SENSORIOCSQUEUEDEPTH: {
+			/* lower bound is mandatory, upper bound is a sanity check */
+			if ((arg < 1) || (arg > 100)) {
+				return -EINVAL;
+			}
+
+			irqstate_t flags = px4_enter_critical_section();
+
+			if (!_parent->_gyro_reports->resize(arg)) {
+				px4_leave_critical_section(flags);
+				return -ENOMEM;
+			}
+
+			px4_leave_critical_section(flags);
+
+			return OK;
+		}
+
+	case GYROIOCGSAMPLERATE:
+		return _parent->_sample_rate;
+
+	case GYROIOCSSAMPLERATE:
+		_parent->_set_sample_rate(arg);
+		return OK;
+
+	case GYROIOCSSCALE:
+		/* copy scale in */
+		memcpy(&_parent->_gyro_scale, (struct gyro_calibration_s *) arg, sizeof(_parent->_gyro_scale));
+		return OK;
+
+	case GYROIOCGSCALE:
+		/* copy scale out */
+		memcpy((struct gyro_calibration_s *) arg, &_parent->_gyro_scale, sizeof(_parent->_gyro_scale));
+		return OK;
+
+	case GYROIOCSRANGE:
+		/* XXX not implemented */
+		// XXX change these two values on set:
+		// _gyro_range_scale = xx
+		// _gyro_range_rad_s = xx
+		return -EINVAL;
+
+	case GYROIOCGRANGE:
+		return (unsigned long)(_parent->_gyro_range_rad_s * 180.0f / M_PI_F + 0.5f);
+
 	default:
-		return _parent->gyro_ioctl(filp, cmd, arg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }

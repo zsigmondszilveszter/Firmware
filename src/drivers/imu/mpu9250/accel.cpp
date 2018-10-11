@@ -42,6 +42,7 @@
  */
 
 #include <px4_config.h>
+#include <ecl/geo/geo.h>
 
 #include <sys/types.h>
 #include <stdint.h>
@@ -119,13 +120,108 @@ MPU9250_accel::read(struct file *filp, char *buffer, size_t buflen)
 int
 MPU9250_accel::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
+	/*
+	 * Repeated in MPU9250_mag::ioctl
+	 * Both accel and mag CDev could be unused in case of magnetometer only mode or MPU6500
+	 */
 
 	switch (cmd) {
 	case DEVIOCGDEVICEID:
 		return (int)CDev::ioctl(filp, cmd, arg);
 		break;
 
+	case SENSORIOCRESET: {
+			return _parent->reset();
+		}
+
+	case SENSORIOCSPOLLRATE: {
+			switch (arg) {
+
+			/* switching to manual polling */
+			case SENSOR_POLLRATE_MANUAL:
+				_parent->stop();
+				_parent->_call_interval = 0;
+				return OK;
+
+			/* external signalling not supported */
+			case SENSOR_POLLRATE_EXTERNAL:
+
+			/* zero would be bad */
+			case 0:
+				return -EINVAL;
+
+			/* set default/max polling rate */
+			case SENSOR_POLLRATE_MAX:
+				return ioctl(filp, SENSORIOCSPOLLRATE, 1000);
+
+			case SENSOR_POLLRATE_DEFAULT:
+				return ioctl(filp, SENSORIOCSPOLLRATE, MPU9250_ACCEL_DEFAULT_RATE);
+
+			/* adjust to a legal polling interval in Hz */
+			default:
+				return _parent->_set_pollrate(arg);
+			}
+		}
+
+	case SENSORIOCGPOLLRATE:
+		if (_parent->_call_interval == 0) {
+			return SENSOR_POLLRATE_MANUAL;
+		}
+
+		return 1000000 / _parent->_call_interval;
+
+	case SENSORIOCSQUEUEDEPTH: {
+			/* lower bound is mandatory, upper bound is a sanity check */
+			if ((arg < 1) || (arg > 100)) {
+				return -EINVAL;
+			}
+
+			irqstate_t flags = px4_enter_critical_section();
+
+			if (!_parent->_accel_reports->resize(arg)) {
+				px4_leave_critical_section(flags);
+				return -ENOMEM;
+			}
+
+			px4_leave_critical_section(flags);
+
+			return OK;
+		}
+
+	case ACCELIOCGSAMPLERATE:
+		return _parent->_sample_rate;
+
+	case ACCELIOCSSAMPLERATE:
+		_parent->_set_sample_rate(arg);
+		return OK;
+
+	case ACCELIOCSSCALE: {
+			/* copy scale, but only if off by a few percent */
+			DEVICE_DEBUG("I'm on bus %d, type %d", _parent->_interface->get_device_bus(), _parent->_device_type);
+			struct accel_calibration_s *s = (struct accel_calibration_s *) arg;
+			float sum = s->x_scale + s->y_scale + s->z_scale;
+
+			if (sum > 2.0f && sum < 4.0f) {
+				memcpy(&_parent->_accel_scale, s, sizeof(_parent->_accel_scale));
+				return OK;
+
+			} else {
+				return -EINVAL;
+			}
+		}
+
+	case ACCELIOCGSCALE:
+		/* copy scale out */
+		memcpy((struct accel_calibration_s *) arg, &_parent->_accel_scale, sizeof(_parent->_accel_scale));
+		return OK;
+
+	case ACCELIOCSRANGE:
+		return _parent->set_accel_range(arg);
+
+	case ACCELIOCGRANGE:
+		return (unsigned long)((_parent->_accel_range_m_s2) / CONSTANTS_ONE_G + 0.5f);
+
 	default:
-		return _parent->accel_ioctl(filp, cmd, arg);
+		return CDev::ioctl(filp, cmd, arg);
 	}
 }
