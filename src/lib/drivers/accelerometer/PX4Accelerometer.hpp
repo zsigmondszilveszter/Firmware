@@ -43,41 +43,37 @@
 #include <uORB/topics/sensor_accel.h>
 #include <uORB/uORB.h>
 
-class Accel : public cdev::CDev
+class PX4Accelerometer : public cdev::CDev
 {
 
 public:
-	Accel(const char *name, device::Device *interface, uint8_t dev_type, enum Rotation rotation, float scale);
-	~Accel() override;
+	PX4Accelerometer(const char *name, uint8_t dev_type, enum Rotation rotation, float scale);
+	~PX4Accelerometer() override;
 
 	int init() override;
 	int	ioctl(cdev::file_t *filp, int cmd, unsigned long arg) override;
 
-	int publish(float x, float y, float z, float temperature);
+	void update(int16_t x, int16_t y, int16_t z);
 
 	void configure_filter(float sample_freq, float cutoff_freq);
 
+	void temperature_update(float temperature) { _report.temperature = temperature; }
+
 private:
-	// Pointer to the communication interface
-	const device::Device *_interface{nullptr};
 
-	accel_calibration_s _cal{};
+	sensor_accel_s		_report{};
 
-	orb_advert_t _topic{nullptr};
+	matrix::Vector3f	_calibration_scale{1.0f, 1.0f, 1.0f};
+	matrix::Vector3f	_calibration_offset{0.0f, 0.0f, 0.0f};
 
-	device::Device::DeviceId _device_id = {};
+	orb_advert_t		_topic{nullptr};
+	int					_orb_class_instance{-1};
 
-	int	_orb_class_instance{-1};
+	int					_class_device_instance{-1};
 
-	int _class_device_instance{-1};
+	enum Rotation		_rotation {ROTATION_NONE};
 
-	enum Rotation _rotation = ROTATION_NONE;
+	math::LowPassFilter2pVector3f _filter{1000, 100};
 
-	float _scale;
-
-	math::LowPassFilter2p _filter_x{1000, 100};
-	math::LowPassFilter2p _filter_y{1000, 100};
-	math::LowPassFilter2p _filter_z{1000, 100};
-
-	Integrator _integrator;
+	Integrator _integrator{4000};
 };

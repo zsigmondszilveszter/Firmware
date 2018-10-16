@@ -31,4 +31,4 @@
 #
 ############################################################################
 
-px4_add_library(drivers__accelerometer Accel.cpp)
+px4_add_library(drivers_accelerometer PX4Accelerometer.cpp)
