@@ -1,6 +1,10 @@
 
 #include <unit_test.h>
 
+#define CATCH_CONFIG_RUNNER
+
+#include <catch.hpp>
+
 #include <matrix/math.hpp>
 #include <matrix/filter.hpp>
 #include <matrix/integration.hpp>
@@ -33,6 +37,17 @@ private:
 	bool dcmRenormTests();
 };
 
+unsigned int Factorial( unsigned int number ) {
+    return number <= 1 ? number : Factorial(number-1)*number;
+}
+
+TEST_CASE( "Factorials are computed", "[factorial]" ) {
+    REQUIRE( Factorial(1) == 1 );
+    REQUIRE( Factorial(2) == 2 );
+    REQUIRE( Factorial(3) == 6 );
+    REQUIRE( Factorial(10) == 3628800 );
+}
+
 bool MatrixTest::run_tests()
 {
 	ut_run_test(attitudeTests);
@@ -57,7 +72,21 @@ bool MatrixTest::run_tests()
 }
 
 
-ut_declare_test_c(test_matrix, MatrixTest)
+extern "C" {
+int test_matrix(int argc, char *argv[]);
+
+int test_matrix(int argc, char *argv[])
+{
+	int result = Catch::Session().run( argc, argv );
+
+	MatrixTest* test = new MatrixTest();
+	bool success = test->run_tests();
+	test->print_results();
+	delete test;
+	return success ? 0 : -1;
+}
+
+}
 
 using matrix::Dcmf;
 using matrix::Quatf;
