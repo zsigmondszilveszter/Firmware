@@ -717,6 +717,8 @@ HMC5883::ioctl(struct file *filp, int cmd, unsigned long arg)
 	case MAGIOCSSCALE:
 		/* set new scale factors */
 		memcpy(&_scale, (struct mag_calibration_s *)arg, sizeof(_scale));
+		PX4_WARN("SC: (%.3f, %.3f, %.3f) OF: (%.3f, %.3f, %.3f) ", (double)_scale.x_scale, (double)_scale.y_scale,
+			 (double)_scale.z_scale, (double)_scale.x_offset, (double)_scale.y_offset, (double)_scale.z_offset);
 		return 0;
 
 	case MAGIOCGSCALE:
@@ -1193,6 +1195,9 @@ int HMC5883::calibrate(struct file *filp, unsigned enable)
 	mscale_previous.y_scale = 1.0f / scaling[1];
 	mscale_previous.z_scale = 1.0f / scaling[2];
 
+	PX4_WARN("new scale X: %.3f Y: %.3f Z: %.3f", (double)mscale_previous.x_scale, (double)mscale_previous.y_scale,
+		 (double)mscale_previous.z_scale);
+
 	ret = OK;
 
 out:
@@ -1232,6 +1237,8 @@ int HMC5883::check_scale()
 	    (-FLT_EPSILON + 1.0f < _scale.z_scale && _scale.z_scale < FLT_EPSILON + 1.0f)) {
 		/* scale is one */
 		scale_valid = false;
+
+		PX4_ERR("check scale failed");
 
 	} else {
 		scale_valid = true;
