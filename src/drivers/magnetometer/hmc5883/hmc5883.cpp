@@ -37,43 +37,21 @@
  * Driver for the HMC5883 / HMC5983 magnetometer connected via I2C or SPI.
  */
 
-#include <px4_config.h>
-#include <px4_defines.h>
-
 #include <drivers/device/i2c.h>
-
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <semaphore.h>
-#include <string.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <errno.h>
-#include <stdio.h>
-#include <math.h>
-#include <unistd.h>
-
-#include <nuttx/arch.h>
-#include <nuttx/wqueue.h>
-#include <nuttx/clock.h>
-
-#include <board_config.h>
-
-#include <perf/perf_counter.h>
-#include <systemlib/err.h>
-
-#include <drivers/drv_mag.h>
-#include <drivers/drv_hrt.h>
 #include <drivers/device/ringbuffer.h>
 #include <drivers/drv_device.h>
-
+#include <drivers/drv_hrt.h>
+#include <drivers/drv_mag.h>
+#include <lib/conversion/rotation.h>
+#include <lib/perf/perf_counter.h>
+#include <px4_config.h>
+#include <px4_defines.h>
+#include <px4_workqueue.h>
+#include <uORB/topics/sensor_mag.h>
 #include <uORB/uORB.h>
 
-#include <float.h>
 #include <getopt.h>
-#include <lib/conversion/rotation.h>
+#include <string.h>
 
 #include "hmc5883.h"
 
@@ -117,6 +95,22 @@
 
 #define HMC5983_TEMP_SENSOR_ENABLE	(1 << 7)
 
+// Configuration Register A
+// TS | MA1 | MA0 | DO2 | DO1 | DO0 | MS1 | MS0
+
+static constexpr uint8_t HMC5983_CONFIG_TEMP_SENSOR_ENABLE = (1 << 7);
+
+static constexpr uint8_t HMC5983_CONFIG_A_TS = (1 << 7);
+static constexpr uint8_t HMC5983_CONFIG_A_MA = (1 << 5);
+static constexpr uint8_t HMC5983_CONFIG_A_DO = (1 << 2);
+static constexpr uint8_t HMC5983_CONFIG_A_MS = (1 << 0);
+
+
+static constexpr uint8_t HMC5983_CONFIG_SAMPLES_AVG_0 = (0 << 5);
+static constexpr uint8_t HMC5983_CONFIG_SAMPLES_AVG_2 = (1 << 5);
+static constexpr uint8_t HMC5983_CONFIG_SAMPLES_AVG_4 = (2 << 5);
+static constexpr uint8_t HMC5983_CONFIG_SAMPLES_AVG_8 = (3 << 5);
+
 enum HMC5883_BUS {
 	HMC5883_BUS_ALL = 0,
 	HMC5883_BUS_I2C_INTERNAL,
@@ -124,20 +118,15 @@ enum HMC5883_BUS {
 	HMC5883_BUS_SPI
 };
 
-#ifndef CONFIG_SCHED_WORKQUEUE
-# error This requires CONFIG_SCHED_WORKQUEUE.
-#endif
-
-class HMC5883 : public device::CDev
+class HMC5883 : public cdev::CDev
 {
 public:
 	HMC5883(device::Device *interface, const char *path, enum Rotation rotation);
-	virtual ~HMC5883();
+	~HMC5883() override;
 
-	virtual int		init();
+	int				init() override;
 
-	virtual ssize_t		read(struct file *filp, char *buffer, size_t buflen);
-	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
+	int				ioctl(device::file_t *filp, int cmd, unsigned long arg) override;
 
 	/**
 	 * Stop the automatic measurement state machine.
@@ -150,21 +139,23 @@ public:
 	void			print_info();
 
 protected:
-	Device			*_interface;
+	device::Device			*_interface;
 
 private:
 	work_s			_work{};
-	unsigned		_measure_ticks;
+	unsigned		_measure_ticks{0};
 
-	ringbuffer::RingBuffer	*_reports;
-	struct mag_calibration_s	_scale;
-	float 			_range_scale;
-	float 			_range_ga;
-	bool			_collect_phase;
-	int			_class_instance;
-	int			_orb_class_instance;
+	mag_calibration_s	_scale{};
 
-	orb_advert_t		_mag_topic;
+	float 			_range_scale{0.0f};
+	float 			_range_ga{1.9f};
+
+	bool			_collect_phase{false};
+
+	int			_class_instance{-1};
+	int			_orb_class_instance{-1};
+
+	orb_advert_t		_mag_topic{nullptr};
 
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_comms_errors;
@@ -172,17 +163,16 @@ private:
 	perf_counter_t		_conf_errors;
 
 	/* status reporting */
-	bool			_sensor_ok;		/**< sensor was found and reports ok */
-	bool			_calibrated;		/**< the calibration is valid */
+	bool			_sensor_ok{false};		/**< sensor was found and reports ok */
 
 	enum Rotation		_rotation;
 
-	struct mag_report	_last_report {};         /**< used for info() */
+	sensor_mag_s		_last_report{};         /**< used for info() */
 
-	uint8_t			_range_bits;
-	uint8_t			_conf_reg;
-	uint8_t			_temperature_counter;
-	uint8_t			_temperature_error_count;
+	uint8_t			_range_bits{0};
+	uint8_t			_conf_reg{0};
+	uint8_t			_temperature_counter{0};
+	uint8_t			_temperature_error_count{0};
 
 	/**
 	 * Initialise the automatic measurement state machine and start it.
@@ -204,9 +194,8 @@ private:
 	 *	 will however reflect the uncalibrated sensor state until
 	 *	 the calibration routine has been completed.
 	 *
-	 * @param enable set to 1 to enable self-test strap, 0 to disable
 	 */
-	int			calibrate(struct file *filp, unsigned enable);
+	int			calibrate();
 
 	/**
 	 * Perform the on-sensor scale calibration routine.
@@ -218,12 +207,12 @@ private:
 	 * @param enable set to 1 to enable self-test positive strap, -1 to enable
 	 *        negative strap, 0 to set to normal mode
 	 */
-	int			set_excitement(unsigned enable);
+	int			set_excitement(bool enable);
 
 	/**
 	 * enable hmc5983 temperature compensation
 	 */
-	int			set_temperature_compensation(unsigned enable);
+	int			set_temperature_compensation(bool enable);
 
 	/**
 	 * Set the sensor range.
@@ -238,7 +227,7 @@ private:
 	 * checks that the range of the sensor is correctly set, to
 	 * cope with communication errors causing the range to change
 	 */
-	void 			check_range(void);
+	void 			check_range();
 
 	/**
 	 * check the sensor configuration.
@@ -247,7 +236,7 @@ private:
 	 * cope with communication errors causing the configuration to
 	 * change
 	 */
-	void 			check_conf(void);
+	void 			check_conf();
 
 	/**
 	 * Perform a poll cycle; collect from the previous measurement
@@ -308,25 +297,8 @@ private:
 	 * @param in		A signed 16-bit big-endian value.
 	 * @return		The floating-point representation of the value.
 	 */
-	float			meas_to_float(uint8_t in[2]);
+	float			meas_to_float(uint8_t in[2]) const;
 
-	/**
-	* Check the current scale calibration
-	*
-	* @return 0 if scale calibration is ok, 1 else
-	*/
-	int 			check_scale();
-
-	/**
-	* Check the current offset calibration
-	*
-	* @return 0 if offset calibration is ok, 1 else
-	*/
-	int 			check_offset();
-
-	/* this class has pointer data members, do not allow copying it */
-	HMC5883(const HMC5883 &);
-	HMC5883 operator=(const HMC5883 &);
 };
 
 /*
@@ -334,60 +306,30 @@ private:
  */
 extern "C" __EXPORT int hmc5883_main(int argc, char *argv[]);
 
-
 HMC5883::HMC5883(device::Device *interface, const char *path, enum Rotation rotation) :
-	CDev("HMC5883", path),
+	CDev(path),
 	_interface(interface),
-	_measure_ticks(0),
-	_reports(nullptr),
-	_scale{},
-	_range_scale(0), /* default range scale from counts to gauss */
-	_range_ga(1.9f),
-	_collect_phase(false),
-	_class_instance(-1),
-	_orb_class_instance(-1),
-	_mag_topic(nullptr),
 	_sample_perf(perf_alloc(PC_ELAPSED, "hmc5883_read")),
 	_comms_errors(perf_alloc(PC_COUNT, "hmc5883_com_err")),
 	_range_errors(perf_alloc(PC_COUNT, "hmc5883_rng_err")),
 	_conf_errors(perf_alloc(PC_COUNT, "hmc5883_conf_err")),
-	_sensor_ok(false),
-	_calibrated(false),
-	_rotation(rotation),
-	_range_bits(0),
-	_conf_reg(0),
-	_temperature_counter(0),
-	_temperature_error_count(0)
+	_rotation(rotation)
 {
-	// set the device type from the interface
-	_device_id.devid_s.bus_type = _interface->get_device_bus_type();
-	_device_id.devid_s.bus = _interface->get_device_bus();
-	_device_id.devid_s.address = _interface->get_device_address();
-	_device_id.devid_s.devtype = DRV_MAG_DEVTYPE_HMC5883;
-
-	// enable debug() calls
-	_debug_enabled = false;
+	_interface->set_device_type(DRV_MAG_DEVTYPE_HMC5883);
 
 	// default scaling
-	_scale.x_offset = 0;
+	_scale.x_offset = 0.0f;
 	_scale.x_scale = 1.0f;
-	_scale.y_offset = 0;
+	_scale.y_offset = 0.0f;
 	_scale.y_scale = 1.0f;
-	_scale.z_offset = 0;
+	_scale.z_offset = 0.0f;
 	_scale.z_scale = 1.0f;
-
-	// work_cancel in the dtor will explode if we don't do this...
-	memset(&_work, 0, sizeof(_work));
 }
 
 HMC5883::~HMC5883()
 {
 	/* make sure we are truly inactive */
 	stop();
-
-	if (_reports != nullptr) {
-		delete _reports;
-	}
 
 	if (_class_instance != -1) {
 		unregister_class_devname(MAG_BASE_DEVICE_PATH, _class_instance);
@@ -403,20 +345,11 @@ HMC5883::~HMC5883()
 int
 HMC5883::init()
 {
-	int ret = PX4_ERROR;
-
-	ret = CDev::init();
+	int ret = CDev::init();
 
 	if (ret != OK) {
-		DEVICE_DEBUG("CDev init failed");
-		goto out;
-	}
-
-	/* allocate basic report buffers */
-	_reports = new ringbuffer::RingBuffer(2, sizeof(mag_report));
-
-	if (_reports == nullptr) {
-		goto out;
+		PX4_DEBUG("CDev init failed");
+		return ret;
 	}
 
 	/* reset the device configuration */
@@ -424,11 +357,10 @@ HMC5883::init()
 
 	_class_instance = register_class_devname(MAG_BASE_DEVICE_PATH);
 
-	ret = OK;
 	/* sensor is ok, but not calibrated */
 	_sensor_ok = true;
-out:
-	return ret;
+
+	return PX4_OK;
 }
 
 int HMC5883::set_range(unsigned range)
@@ -500,7 +432,7 @@ int HMC5883::set_range(unsigned range)
    periodically to cope with I2C bus noise causing the range of the
    compass changing.
  */
-void HMC5883::check_range(void)
+void HMC5883::check_range()
 {
 	int ret;
 
@@ -527,7 +459,7 @@ void HMC5883::check_range(void)
    done periodically to cope with I2C bus noise causing the
    configuration of the compass to change.
  */
-void HMC5883::check_conf(void)
+void HMC5883::check_conf()
 {
 	int ret;
 
@@ -549,69 +481,9 @@ void HMC5883::check_conf(void)
 	}
 }
 
-ssize_t
-HMC5883::read(struct file *filp, char *buffer, size_t buflen)
-{
-	unsigned count = buflen / sizeof(struct mag_report);
-	struct mag_report *mag_buf = reinterpret_cast<struct mag_report *>(buffer);
-	int ret = 0;
-
-	/* buffer must be large enough */
-	if (count < 1) {
-		return -ENOSPC;
-	}
-
-	/* if automatic measurement is enabled */
-	if (_measure_ticks > 0) {
-		/*
-		 * While there is space in the caller's buffer, and reports, copy them.
-		 * Note that we may be pre-empted by the workq thread while we are doing this;
-		 * we are careful to avoid racing with them.
-		 */
-		while (count--) {
-			if (_reports->get(mag_buf)) {
-				ret += sizeof(struct mag_report);
-				mag_buf++;
-			}
-		}
-
-		/* if there was no data, warn the caller */
-		return ret ? ret : -EAGAIN;
-	}
-
-	/* manual measurement - run one conversion */
-	/* XXX really it'd be nice to lock against other readers here */
-	do {
-		_reports->flush();
-
-		/* trigger a measurement */
-		if (OK != measure()) {
-			ret = -EIO;
-			break;
-		}
-
-		/* wait for it to complete */
-		usleep(HMC5883_CONVERSION_INTERVAL);
-
-		/* run the collection phase */
-		if (OK != collect()) {
-			ret = -EIO;
-			break;
-		}
-
-		if (_reports->get(mag_buf)) {
-			ret = sizeof(struct mag_report);
-		}
-	} while (0);
-
-	return ret;
-}
-
 int
 HMC5883::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
-	unsigned dummy = arg;
-
 	switch (cmd) {
 	case SENSORIOCSPOLLRATE: {
 			switch (arg) {
@@ -620,7 +492,7 @@ HMC5883::ioctl(struct file *filp, int cmd, unsigned long arg)
 			case 0:
 				return -EINVAL;
 
-			/* set default polling rate */
+			/* set default/max polling rate */
 			case SENSOR_POLLRATE_DEFAULT: {
 					/* do we need to start internal polling? */
 					bool want_start = (_measure_ticks == 0);
@@ -665,31 +537,15 @@ HMC5883::ioctl(struct file *filp, int cmd, unsigned long arg)
 	case SENSORIOCRESET:
 		return reset();
 
-	case MAGIOCSRANGE:
-		return set_range(arg);
-
 	case MAGIOCSSCALE:
 		/* set new scale factors */
 		memcpy(&_scale, (struct mag_calibration_s *)arg, sizeof(_scale));
+		PX4_WARN("SC: (%.3f, %.3f, %.3f) OF: (%.3f, %.3f, %.3f) ", (double)_scale.x_scale, (double)_scale.y_scale,
+			 (double)_scale.z_scale, (double)_scale.x_offset, (double)_scale.y_offset, (double)_scale.z_offset);
 		return 0;
 
-	case MAGIOCGSCALE:
-		/* copy out scale factors */
-		memcpy((struct mag_calibration_s *)arg, &_scale, sizeof(_scale));
-		return 0;
-
-	case MAGIOCCALIBRATE:
-		return calibrate(filp, arg);
-
-	case MAGIOCEXSTRAP:
-		return set_excitement(arg);
-
-	case MAGIOCGEXTERNAL:
-		DEVICE_DEBUG("MAGIOCGEXTERNAL in main driver");
-		return _interface->ioctl(cmd, dummy);
-
-	case MAGIOCSTEMPCOMP:
-		return set_temperature_compensation(arg);
+	case DEVIOCGDEVICEID:
+		return _interface->get_device_id();
 
 	default:
 		/* give it to the superclass */
@@ -702,7 +558,6 @@ HMC5883::start()
 {
 	/* reset the report ring and state machine */
 	_collect_phase = false;
-	_reports->flush();
 
 	/* schedule a cycle to start things */
 	work_queue(HPWORK, &_work, (worker_t)&HMC5883::cycle_trampoline, this, 1);
@@ -744,10 +599,12 @@ HMC5883::cycle()
 	if (_collect_phase) {
 
 		/* perform collection */
-		if (OK != collect()) {
-			DEVICE_DEBUG("collection error");
+		if (PX4_OK != collect()) {
+			PX4_DEBUG("collection error");
+
 			/* restart the measurement state machine */
 			start();
+
 			return;
 		}
 
@@ -760,10 +617,7 @@ HMC5883::cycle()
 		if (_measure_ticks > USEC2TICK(HMC5883_CONVERSION_INTERVAL)) {
 
 			/* schedule a fresh cycle call when we are ready to measure again */
-			work_queue(HPWORK,
-				   &_work,
-				   (worker_t)&HMC5883::cycle_trampoline,
-				   this,
+			work_queue(HPWORK, &_work, (worker_t)&HMC5883::cycle_trampoline, this,
 				   _measure_ticks - USEC2TICK(HMC5883_CONVERSION_INTERVAL));
 
 			return;
@@ -772,7 +626,7 @@ HMC5883::cycle()
 
 	/* measurement phase */
 	if (OK != measure()) {
-		DEVICE_DEBUG("measure error");
+		PX4_DEBUG("measure error");
 	}
 
 	/* next phase is collection */
@@ -780,23 +634,17 @@ HMC5883::cycle()
 
 	if (_measure_ticks > 0) {
 		/* schedule a fresh cycle call when the measurement is done */
-		work_queue(HPWORK,
-			   &_work,
-			   (worker_t)&HMC5883::cycle_trampoline,
-			   this,
-			   USEC2TICK(HMC5883_CONVERSION_INTERVAL));
+		work_queue(HPWORK, &_work, (worker_t)&HMC5883::cycle_trampoline, this, USEC2TICK(HMC5883_CONVERSION_INTERVAL));
 	}
 }
 
 int
 HMC5883::measure()
 {
-	int ret;
-
 	/*
 	 * Send the command to begin a measurement.
 	 */
-	ret = write_reg(ADDR_MODE, MODE_REG_SINGLE_MODE);
+	int ret = write_reg(ADDR_MODE, MODE_REG_SINGLE_MODE);
 
 	if (OK != ret) {
 		perf_count(_comms_errors);
@@ -815,26 +663,16 @@ HMC5883::collect()
 		uint8_t		y[2];
 	}	hmc_report;
 #pragma pack(pop)
-	struct {
-		int16_t		x, y, z;
-	} report;
-
-	int	ret;
-	uint8_t check_counter;
 
 	perf_begin(_sample_perf);
-	struct mag_report new_report;
-	bool sensor_is_onboard = false;
 
-	float xraw_f;
-	float yraw_f;
-	float zraw_f;
+	sensor_mag_s new_report;
 
 	/* this should be fairly close to the end of the measurement, so the best approximation of the time */
 	new_report.timestamp = hrt_absolute_time();
 	new_report.error_count = perf_event_count(_comms_errors);
 	new_report.scaling = _range_scale;
-	new_report.device_id = _device_id.devid;
+	new_report.device_id = _interface->get_device_id();
 
 	/*
 	 * @note  We could read the status register here, which could tell us that
@@ -844,13 +682,21 @@ HMC5883::collect()
 	 */
 
 	/* get measurements from the device */
-	ret = _interface->read(ADDR_DATA_OUT_X_MSB, (uint8_t *)&hmc_report, sizeof(hmc_report));
+	int ret = _interface->read(ADDR_DATA_OUT_X_MSB, (uint8_t *)&hmc_report, sizeof(hmc_report));
 
-	if (ret != OK) {
+	if (ret != PX4_OK) {
 		perf_count(_comms_errors);
-		DEVICE_DEBUG("data/status read error");
-		goto out;
+		PX4_DEBUG("data/status read error");
+
+		perf_end(_sample_perf);
+		return PX4_ERROR;
 	}
+
+	struct {
+		int16_t	x;
+		int16_t y;
+		int16_t z;
+	} report;
 
 	/* swap the data we just received */
 	report.x = (((int16_t)hmc_report.x[0]) << 8) + hmc_report.x[1];
@@ -864,8 +710,10 @@ HMC5883::collect()
 	if ((abs(report.x) > 2048) ||
 	    (abs(report.y) > 2048) ||
 	    (abs(report.z) > 2048)) {
+
 		perf_count(_comms_errors);
-		goto out;
+		perf_end(_sample_perf);
+		return PX4_ERROR;
 	}
 
 	/* get measurements from the device */
@@ -884,12 +732,10 @@ HMC5883::collect()
 
 			_temperature_counter = 0;
 
-			ret = _interface->read(ADDR_TEMP_OUT_MSB,
-					       raw_temperature, sizeof(raw_temperature));
+			ret = _interface->read(ADDR_TEMP_OUT_MSB, raw_temperature, sizeof(raw_temperature));
 
-			if (ret == OK) {
-				int16_t temp16 = (((int16_t)raw_temperature[0]) << 8) +
-						 raw_temperature[1];
+			if (ret == PX4_OK) {
+				int16_t temp16 = (((int16_t)raw_temperature[0]) << 8) + raw_temperature[1];
 				new_report.temperature = 25 + (temp16 / (16 * 8.0f));
 				_temperature_error_count = 0;
 
@@ -902,8 +748,8 @@ HMC5883::collect()
 					  and can't do temperature. Disable it
 					*/
 					_temperature_error_count = 0;
-					DEVICE_DEBUG("disabling temperature compensation");
-					set_temperature_compensation(0);
+					PX4_DEBUG("disabling temperature compensation");
+					set_temperature_compensation(false);
 				}
 			}
 
@@ -920,17 +766,11 @@ HMC5883::collect()
 	 */
 	new_report.x_raw = -report.y;
 	new_report.y_raw = report.x;
-	/* z remains z */
-	new_report.z_raw = report.z;
+	new_report.z_raw = report.z; /* z remains z */
 
-	/* scale values for output */
+	new_report.is_external = _interface->external();
 
-	// XXX revisit for SPI part, might require a bus type IOCTL
-	unsigned dummy;
-	sensor_is_onboard = !_interface->ioctl(MAGIOCGEXTERNAL, dummy);
-	new_report.is_external = !sensor_is_onboard;
-
-	if (sensor_is_onboard) {
+	if (new_report.is_external) {
 		// convert onboard so it matches offboard for the
 		// scaling below
 		report.y = -report.y;
@@ -940,42 +780,21 @@ HMC5883::collect()
 	/* the standard external mag by 3DR has x pointing to the
 	 * right, y pointing backwards, and z down, therefore switch x
 	 * and y and invert y */
-	xraw_f = -report.y;
-	yraw_f = report.x;
-	zraw_f = report.z;
+	float xraw_f = -report.y;
+	float yraw_f = report.x;
+	float zraw_f = report.z;
 
 	// apply user specified rotation
 	rotate_3f(_rotation, xraw_f, yraw_f, zraw_f);
 
 	new_report.x = ((xraw_f * _range_scale) - _scale.x_offset) * _scale.x_scale;
-	/* flip axes and negate value for y */
 	new_report.y = ((yraw_f * _range_scale) - _scale.y_offset) * _scale.y_scale;
-	/* z remains z */
 	new_report.z = ((zraw_f * _range_scale) - _scale.z_offset) * _scale.z_scale;
 
-	if (!(_pub_blocked)) {
-
-		if (_mag_topic != nullptr) {
-			/* publish it */
-			orb_publish(ORB_ID(sensor_mag), _mag_topic, &new_report);
-
-		} else {
-			_mag_topic = orb_advertise_multi(ORB_ID(sensor_mag), &new_report,
-							 &_orb_class_instance, (sensor_is_onboard) ? ORB_PRIO_HIGH : ORB_PRIO_MAX);
-
-			if (_mag_topic == nullptr) {
-				DEVICE_DEBUG("ADVERT FAIL");
-			}
-		}
-	}
+	orb_publish_auto(ORB_ID(sensor_mag), &_mag_topic, &new_report, &_orb_class_instance,
+			 new_report.is_external ? ORB_PRIO_MAX : ORB_PRIO_HIGH);
 
 	_last_report = new_report;
-
-	/* post a report to the ring */
-	_reports->force(&new_report);
-
-	/* notify anyone waiting for data */
-	poll_notify(POLLIN);
 
 	/*
 	  periodically check the range register and configuration
@@ -984,34 +803,68 @@ HMC5883::collect()
 	  doesn't happen often, but given the poor cables some
 	  vehicles have it is worth checking for.
 	 */
-	check_counter = perf_event_count(_sample_perf) % 256;
+	uint8_t check_counter = perf_event_count(_sample_perf) % 256;
 
 	if (check_counter == 0) {
 		check_range();
-	}
 
-	if (check_counter == 128) {
+	} else if (check_counter == 128) {
 		check_conf();
 	}
 
 	ret = OK;
 
-out:
 	perf_end(_sample_perf);
 	return ret;
 }
 
-int HMC5883::calibrate(struct file *filp, unsigned enable)
+/**
+ * Automatic scale calibration.
+ *
+ * Basic idea:
+ *
+ *   output = (ext field +- 1.1 Ga self-test) * scale factor
+ *
+ * and consequently:
+ *
+ *   1.1 Ga = (excited - normal) * scale factor
+ *   scale factor = (excited - normal) / 1.1 Ga
+ *
+ *   sxy = (excited - normal) / 766	| for conf reg. B set to 0x60 / Gain = 3
+ *   sz  = (excited - normal) / 713	| for conf reg. B set to 0x60 / Gain = 3
+ *
+ * By subtracting the non-excited measurement the pure 1.1 Ga reading
+ * can be extracted and the sensitivity of all axes can be matched.
+ *
+ * SELF TEST OPERATION
+ * To check the HMC5883L for proper operation, a self test feature in incorporated
+ * in which the sensor offset straps are excited to create a nominal field strength
+ * (bias field) to be measured. To implement self test, the least significant bits
+ * (MS1 and MS0) of configuration register A are changed from 00 to 01 (positive bias)
+ * or 10 (negetive bias), e.g. 0x11 or 0x12.
+ * Then, by placing the mode register into single-measurement mode (0x01),
+ * two data acquisition cycles will be made on each magnetic vector.
+ * The first acquisition will be a set pulse followed shortly by measurement
+ * data of the external field. The second acquisition will have the offset strap
+ * excited (about 10 mA) in the positive bias mode for X, Y, and Z axes to create
+ * about a ±1.1 gauss self test field plus the external field. The first acquisition
+ * values will be subtracted from the second acquisition, and the net measurement
+ * will be placed into the data output registers.
+ * Since self test adds ~1.1 Gauss additional field to the existing field strength,
+ * using a reduced gain setting prevents sensor from being saturated and data registers
+ * overflowed. For example, if the configuration register B is set to 0x60 (Gain=3),
+ * values around +766 LSB (1.16 Ga * 660 LSB/Ga) will be placed in the X and Y data
+ * output registers and around +713 (1.08 Ga * 660 LSB/Ga) will be placed in Z data
+ * output register. To leave the self test mode, change MS1 and MS0 bit of the
+ * configuration register A back to 00 (Normal Measurement Mode), e.g. 0x10.
+ * Using the self test method described above, the user can scale sensor
+ */
+int HMC5883::calibrate()
 {
-	struct mag_report report;
-	ssize_t sz;
-	int ret = 1;
+	int ret = PX4_OK;
 	uint8_t good_count = 0;
 
-	// XXX do something smarter here
-	int fd = (int)enable;
-
-	struct mag_calibration_s mscale_previous;
+	mag_calibration_s mscale_previous{};
 	mscale_previous.x_offset = 0.0f;
 	mscale_previous.x_scale = 1.0f;
 	mscale_previous.y_offset = 0.0f;
@@ -1019,7 +872,7 @@ int HMC5883::calibrate(struct file *filp, unsigned enable)
 	mscale_previous.z_offset = 0.0f;
 	mscale_previous.z_scale = 1.0f;
 
-	struct mag_calibration_s mscale_null;
+	mag_calibration_s mscale_null{};
 	mscale_null.x_offset = 0.0f;
 	mscale_null.x_scale = 1.0f;
 	mscale_null.y_offset = 0.0f;
@@ -1034,49 +887,49 @@ int HMC5883::calibrate(struct file *filp, unsigned enable)
 	 * axis. Experiments show that in fact 766 is placed in X,
 	 * and 713 in Y and Z. This is relative to a base of 660
 	 * LSM/Ga, giving 1.16 and 1.08 */
-	float expected_cal[3] = { 1.16f, 1.08f, 1.08f };
+	const float expected_cal[3] = { 1.16f, 1.08f, 1.08f };
 
 	/* start the sensor polling at 50 Hz */
-	if (OK != ioctl(filp, SENSORIOCSPOLLRATE, 50)) {
-		warn("FAILED: SENSORIOCSPOLLRATE 50Hz");
-		ret = 1;
-		goto out;
-	}
+//	if (px4_ioctl(filp, SENSORIOCSPOLLRATE, 50) != PX4_OK) {
+//		warn("FAILED: SENSORIOCSPOLLRATE 50Hz");
+//		ret = 1;
+//		goto out;
+//	}
 
 	/* Set to 2.5 Gauss. We ask for 3 to get the right part of
 	 * the chained if statement above. */
-	if (OK != ioctl(filp, MAGIOCSRANGE, 3)) {
-		warnx("FAILED: MAGIOCSRANGE 2.5 Ga");
-		ret = 1;
-		goto out;
-	}
+//	if (OK != ioctl(filp, MAGIOCSRANGE, 3)) {
+//		warnx("FAILED: MAGIOCSRANGE 2.5 Ga");
+//		ret = 1;
+//		goto out;
+//	}
 
-	if (OK != ioctl(filp, MAGIOCEXSTRAP, 1)) {
-		warnx("FAILED: MAGIOCEXSTRAP 1");
-		ret = 1;
-		goto out;
-	}
+//	if (OK != ioctl(filp, MAGIOCEXSTRAP, 1)) {
+//		warnx("FAILED: MAGIOCEXSTRAP 1");
+//		ret = 1;
+//		goto out;
+//	}
 
-	if (OK != ioctl(filp, MAGIOCGSCALE, (long unsigned int)&mscale_previous)) {
-		warn("FAILED: MAGIOCGSCALE 1");
-		ret = 1;
-		goto out;
-	}
+//	if (OK != ioctl(filp, MAGIOCGSCALE, (long unsigned int)&mscale_previous)) {
+//		warn("FAILED: MAGIOCGSCALE 1");
+//		ret = 1;
+//		goto out;
+//	}
 
-	if (OK != ioctl(filp, MAGIOCSSCALE, (long unsigned int)&mscale_null)) {
-		warn("FAILED: MAGIOCSSCALE 1");
-		ret = 1;
-		goto out;
-	}
+//	if (OK != ioctl(filp, MAGIOCSSCALE, (long unsigned int)&mscale_null)) {
+//		warn("FAILED: MAGIOCSSCALE 1");
+//		ret = 1;
+//		goto out;
+//	}
 
 	// discard 10 samples to let the sensor settle
 	for (uint8_t i = 0; i < 10; i++) {
 		struct pollfd fds;
 
 		/* wait for data to be ready */
-		fds.fd = fd;
+		fds.fd = -1;
 		fds.events = POLLIN;
-		ret = ::poll(&fds, 1, 2000);
+		ret = px4_poll(&fds, 1, 2000);
 
 		if (ret != 1) {
 			warn("ERROR: TIMEOUT 1");
@@ -1084,10 +937,11 @@ int HMC5883::calibrate(struct file *filp, unsigned enable)
 		}
 
 		/* now go get it */
-		sz = ::read(fd, &report, sizeof(report));
+		sensor_mag_s report{};
+		ssize_t sz = px4_read(-1, &report, sizeof(report));
 
 		if (sz != sizeof(report)) {
-			warn("ERROR: READ 1");
+			PX4_ERR("READ 1");
 			ret = -EIO;
 			goto out;
 		}
@@ -1098,9 +952,9 @@ int HMC5883::calibrate(struct file *filp, unsigned enable)
 		struct pollfd fds;
 
 		/* wait for data to be ready */
-		fds.fd = fd;
+		fds.fd = -1;
 		fds.events = POLLIN;
-		ret = ::poll(&fds, 1, 2000);
+		ret = px4_poll(&fds, 1, 2000);
 
 		if (ret != 1) {
 			warn("ERROR: TIMEOUT 2");
@@ -1108,10 +962,11 @@ int HMC5883::calibrate(struct file *filp, unsigned enable)
 		}
 
 		/* now go get it */
-		sz = ::read(fd, &report, sizeof(report));
+		sensor_mag_s report{};
+		ssize_t sz = px4_read(-1, &report, sizeof(report));
 
 		if (sz != sizeof(report)) {
-			warn("ERROR: READ 2");
+			PX4_ERR("ERROR: READ 2");
 			ret = -EIO;
 			goto out;
 		}
@@ -1124,6 +979,7 @@ int HMC5883::calibrate(struct file *filp, unsigned enable)
 		if (cal[0] > 0.3f && cal[0] < 1.7f &&
 		    cal[1] > 0.3f && cal[1] < 1.7f &&
 		    cal[2] > 0.3f && cal[2] < 1.7f) {
+
 			good_count++;
 			sum_excited[0] += cal[0];
 			sum_excited[1] += cal[1];
@@ -1147,79 +1003,37 @@ int HMC5883::calibrate(struct file *filp, unsigned enable)
 	mscale_previous.y_scale = 1.0f / scaling[1];
 	mscale_previous.z_scale = 1.0f / scaling[2];
 
+	PX4_WARN("new scale X: %.3f Y: %.3f Z: %.3f",
+		 (double)mscale_previous.x_scale, (double)mscale_previous.y_scale, (double)mscale_previous.z_scale);
+
 	ret = OK;
 
 out:
 
-	if (OK != ioctl(filp, MAGIOCSSCALE, (long unsigned int)&mscale_previous)) {
-		warn("FAILED: MAGIOCSSCALE 2");
-	}
+//	if (OK != px4_ioctl(filp, MAGIOCSSCALE, (long unsigned int)&mscale_previous)) {
+//		warn("FAILED: MAGIOCSSCALE 2");
+//	}
 
 	/* set back to normal mode */
 	/* Set to 1.9 Gauss */
-	if (OK != ::ioctl(fd, MAGIOCSRANGE, 2)) {
-		warnx("FAILED: MAGIOCSRANGE 1.9 Ga");
-	}
+//	if (OK != ::ioctl(fd, MAGIOCSRANGE, 2)) {
+//		warnx("FAILED: MAGIOCSRANGE 1.9 Ga");
+//	}
 
-	if (OK != ::ioctl(fd, MAGIOCEXSTRAP, 0)) {
-		warnx("FAILED: MAGIOCEXSTRAP 0");
-	}
-
-	if (ret == OK) {
-		if (check_scale()) {
-			/* failed */
-			warnx("FAILED: SCALE");
-			ret = PX4_ERROR;
-		}
-
-	}
+//	if (OK != ::ioctl(fd, MAGIOCEXSTRAP, 0)) {
+//		warnx("FAILED: MAGIOCEXSTRAP 0");
+//	}
 
 	return ret;
 }
 
-int HMC5883::check_scale()
+int HMC5883::set_excitement(bool enable)
 {
-	bool scale_valid;
+	int ret = PX4_OK;
 
-	if ((-FLT_EPSILON + 1.0f < _scale.x_scale && _scale.x_scale < FLT_EPSILON + 1.0f) &&
-	    (-FLT_EPSILON + 1.0f < _scale.y_scale && _scale.y_scale < FLT_EPSILON + 1.0f) &&
-	    (-FLT_EPSILON + 1.0f < _scale.z_scale && _scale.z_scale < FLT_EPSILON + 1.0f)) {
-		/* scale is one */
-		scale_valid = false;
-
-	} else {
-		scale_valid = true;
-	}
-
-	/* return 0 if calibrated, 1 else */
-	return !scale_valid;
-}
-
-int HMC5883::check_offset()
-{
-	bool offset_valid;
-
-	if ((-2.0f * FLT_EPSILON < _scale.x_offset && _scale.x_offset < 2.0f * FLT_EPSILON) &&
-	    (-2.0f * FLT_EPSILON < _scale.y_offset && _scale.y_offset < 2.0f * FLT_EPSILON) &&
-	    (-2.0f * FLT_EPSILON < _scale.z_offset && _scale.z_offset < 2.0f * FLT_EPSILON)) {
-		/* offset is zero */
-		offset_valid = false;
-
-	} else {
-		offset_valid = true;
-	}
-
-	/* return 0 if calibrated, 1 else */
-	return !offset_valid;
-}
-
-int HMC5883::set_excitement(unsigned enable)
-{
-	int ret;
 	/* arm the excitement strap */
-	ret = read_reg(ADDR_CONF_A, _conf_reg);
 
-	if (OK != ret) {
+	if (read_reg(ADDR_CONF_A, _conf_reg) != PX4_OK) {
 		perf_count(_comms_errors);
 	}
 
@@ -1249,7 +1063,6 @@ int HMC5883::set_excitement(unsigned enable)
 	return !(_conf_reg == conf_reg_ret);
 }
 
-
 /*
   enable/disable temperature compensation on the HMC5983
 
@@ -1270,34 +1083,30 @@ int HMC5883::set_excitement(unsigned enable)
   temperature sensor if that happens. It is hoped that this copes with
   the genuine 5883L parts.
  */
-int HMC5883::set_temperature_compensation(unsigned enable)
+int HMC5883::set_temperature_compensation(bool enable)
 {
-	int ret;
 	/* get current config */
-	ret = read_reg(ADDR_CONF_A, _conf_reg);
 
-	if (OK != ret) {
+	if (read_reg(ADDR_CONF_A, _conf_reg) != PX4_OK) {
 		perf_count(_comms_errors);
 		return -EIO;
 	}
 
-	if (enable != 0) {
+	if (enable) {
 		_conf_reg |= HMC5983_TEMP_SENSOR_ENABLE;
 
 	} else {
 		_conf_reg &= ~HMC5983_TEMP_SENSOR_ENABLE;
 	}
 
-	ret = write_reg(ADDR_CONF_A, _conf_reg);
-
-	if (OK != ret) {
+	if (write_reg(ADDR_CONF_A, _conf_reg) != PX4_OK) {
 		perf_count(_comms_errors);
 		return -EIO;
 	}
 
 	uint8_t conf_reg_ret = 0;
 
-	if (read_reg(ADDR_CONF_A, conf_reg_ret) != OK) {
+	if (read_reg(ADDR_CONF_A, conf_reg_ret) != PX4_OK) {
 		perf_count(_comms_errors);
 		return -EIO;
 	}
@@ -1322,7 +1131,7 @@ HMC5883::read_reg(uint8_t reg, uint8_t &val)
 }
 
 float
-HMC5883::meas_to_float(uint8_t in[2])
+HMC5883::meas_to_float(uint8_t in[2]) const
 {
 	union {
 		uint8_t	b[2];
@@ -1342,7 +1151,9 @@ HMC5883::print_info()
 	perf_print_counter(_comms_errors);
 	printf("poll interval:  %u ticks\n", _measure_ticks);
 	print_message(_last_report);
-	_reports->print_info("report queue");
+
+	PX4_INFO("SC: (%.3f, %.3f, %.3f) OF: (%.3f, %.3f, %.3f) ", (double)_scale.x_scale, (double)_scale.y_scale,
+		 (double)_scale.z_scale, (double)_scale.x_offset, (double)_scale.y_offset, (double)_scale.z_offset);
 }
 
 /**
@@ -1414,22 +1225,21 @@ start_bus(struct hmc5883_bus_option &bus, enum Rotation rotation)
 		return false;
 	}
 
-	int fd = open(bus.devpath, O_RDONLY);
+	int fd = px4_open(bus.devpath, O_RDONLY);
 
 	if (fd < 0) {
 		return false;
 	}
 
-	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
+	if (px4_ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
 		close(fd);
 		errx(1, "Failed to setup poll rate");
 	}
 
-	close(fd);
+	px4_close(fd);
 
 	return true;
 }
-
 
 /**
  * Start the driver.
@@ -1523,13 +1333,6 @@ test(enum HMC5883_BUS busid)
 
 	print_message(report);
 
-	/* check if mag is onboard or external */
-	if ((ret = ioctl(fd, MAGIOCGEXTERNAL, 0)) < 0) {
-		errx(1, "failed to get if mag is onboard or external");
-	}
-
-	warnx("device active: %s", ret ? "external" : "onboard");
-
 	/* read the sensor 5x and report each value */
 	for (unsigned i = 0; i < 5; i++) {
 		struct pollfd fds;
@@ -1556,69 +1359,6 @@ test(enum HMC5883_BUS busid)
 	errx(0, "PASS");
 }
 
-
-/**
- * Automatic scale calibration.
- *
- * Basic idea:
- *
- *   output = (ext field +- 1.1 Ga self-test) * scale factor
- *
- * and consequently:
- *
- *   1.1 Ga = (excited - normal) * scale factor
- *   scale factor = (excited - normal) / 1.1 Ga
- *
- *   sxy = (excited - normal) / 766	| for conf reg. B set to 0x60 / Gain = 3
- *   sz  = (excited - normal) / 713	| for conf reg. B set to 0x60 / Gain = 3
- *
- * By subtracting the non-excited measurement the pure 1.1 Ga reading
- * can be extracted and the sensitivity of all axes can be matched.
- *
- * SELF TEST OPERATION
- * To check the HMC5883L for proper operation, a self test feature in incorporated
- * in which the sensor offset straps are excited to create a nominal field strength
- * (bias field) to be measured. To implement self test, the least significant bits
- * (MS1 and MS0) of configuration register A are changed from 00 to 01 (positive bias)
- * or 10 (negetive bias), e.g. 0x11 or 0x12.
- * Then, by placing the mode register into single-measurement mode (0x01),
- * two data acquisition cycles will be made on each magnetic vector.
- * The first acquisition will be a set pulse followed shortly by measurement
- * data of the external field. The second acquisition will have the offset strap
- * excited (about 10 mA) in the positive bias mode for X, Y, and Z axes to create
- * about a ±1.1 gauss self test field plus the external field. The first acquisition
- * values will be subtracted from the second acquisition, and the net measurement
- * will be placed into the data output registers.
- * Since self test adds ~1.1 Gauss additional field to the existing field strength,
- * using a reduced gain setting prevents sensor from being saturated and data registers
- * overflowed. For example, if the configuration register B is set to 0x60 (Gain=3),
- * values around +766 LSB (1.16 Ga * 660 LSB/Ga) will be placed in the X and Y data
- * output registers and around +713 (1.08 Ga * 660 LSB/Ga) will be placed in Z data
- * output register. To leave the self test mode, change MS1 and MS0 bit of the
- * configuration register A back to 00 (Normal Measurement Mode), e.g. 0x10.
- * Using the self test method described above, the user can scale sensor
- */
-int calibrate(enum HMC5883_BUS busid)
-{
-	int ret;
-	struct hmc5883_bus_option &bus = find_bus(busid);
-	const char *path = bus.devpath;
-
-	int fd = open(path, O_RDONLY);
-
-	if (fd < 0) {
-		err(1, "%s open failed (try 'hmc5883 start' if the driver is not running", path);
-	}
-
-	if (OK != (ret = ioctl(fd, MAGIOCCALIBRATE, fd))) {
-		warnx("failed to enable sensor calibration mode");
-	}
-
-	close(fd);
-
-	return ret;
-}
-
 /**
  * Reset the driver.
  */
@@ -1628,45 +1368,21 @@ reset(enum HMC5883_BUS busid)
 	struct hmc5883_bus_option &bus = find_bus(busid);
 	const char *path = bus.devpath;
 
-	int fd = open(path, O_RDONLY);
+	int fd = px4_open(path, O_RDONLY);
 
 	if (fd < 0) {
 		err(1, "failed ");
 	}
 
-	if (ioctl(fd, SENSORIOCRESET, 0) < 0) {
+	if (px4_ioctl(fd, SENSORIOCRESET, 0) < 0) {
 		err(1, "driver reset failed");
 	}
 
-	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
+	if (px4_ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
 		err(1, "driver poll restart failed");
 	}
 
 	exit(0);
-}
-
-
-/**
- * enable/disable temperature compensation
- */
-int
-temp_enable(enum HMC5883_BUS busid, bool enable)
-{
-	struct hmc5883_bus_option &bus = find_bus(busid);
-	const char *path = bus.devpath;
-
-	int fd = open(path, O_RDONLY);
-
-	if (fd < 0) {
-		err(1, "failed ");
-	}
-
-	if (ioctl(fd, MAGIOCSTEMPCOMP, (unsigned)enable) < 0) {
-		err(1, "set temperature compensation failed");
-	}
-
-	close(fd);
-	return 0;
 }
 
 /**
@@ -1685,10 +1401,9 @@ info(enum HMC5883_BUS busid)
 void
 usage()
 {
-	warnx("missing command: try 'start', 'info', 'test', 'reset', 'info', 'calibrate'");
+	warnx("missing command: try 'start', 'info', 'test', 'reset', 'info'");
 	warnx("options:");
 	warnx("    -R rotation");
-	warnx("    -C calibrate on start");
 	warnx("    -X only external bus");
 #if (PX4_I2C_BUS_ONBOARD || PX4_SPIDEV_HMC)
 	warnx("    -I only internal bus");
@@ -1711,7 +1426,7 @@ hmc5883_main(int argc, char *argv[])
 		exit(0);
 	}
 
-	while ((ch = getopt(argc, argv, "XISR:CT")) != EOF) {
+	while ((ch = getopt(argc, argv, "XISR:")) != EOF) {
 		switch (ch) {
 		case 'R':
 			rotation = (enum Rotation)atoi(optarg);
@@ -1731,14 +1446,6 @@ hmc5883_main(int argc, char *argv[])
 			busid = HMC5883_BUS_SPI;
 			break;
 
-		case 'C':
-			calibrate = true;
-			break;
-
-		case 'T':
-			temp_compensation = true;
-			break;
-
 		default:
 			hmc5883::usage();
 			exit(0);
@@ -1752,16 +1459,6 @@ hmc5883_main(int argc, char *argv[])
 	 */
 	if (!strcmp(verb, "start")) {
 		hmc5883::start(busid, rotation);
-
-		if (calibrate && hmc5883::calibrate(busid) != 0) {
-			errx(1, "calibration failed");
-		}
-
-		if (temp_compensation) {
-			// we consider failing to setup temperature
-			// compensation as non-fatal
-			hmc5883::temp_enable(busid, true);
-		}
 
 		exit(0);
 	}
@@ -1788,33 +1485,10 @@ hmc5883_main(int argc, char *argv[])
 	}
 
 	/*
-	 * enable/disable temperature compensation
-	 */
-	if (!strcmp(verb, "tempoff")) {
-		hmc5883::temp_enable(busid, false);
-	}
-
-	if (!strcmp(verb, "tempon")) {
-		hmc5883::temp_enable(busid, true);
-	}
-
-	/*
 	 * Print driver information.
 	 */
 	if (!strcmp(verb, "info") || !strcmp(verb, "status")) {
 		hmc5883::info(busid);
-	}
-
-	/*
-	 * Autocalibrate the scaling
-	 */
-	if (!strcmp(verb, "calibrate")) {
-		if (hmc5883::calibrate(busid) == 0) {
-			errx(0, "calibration successful");
-
-		} else {
-			errx(1, "calibration failed");
-		}
 	}
 
 	errx(1, "unrecognized command, try 'start', 'test', 'reset' 'calibrate', 'tempoff', 'tempon' or 'info'");

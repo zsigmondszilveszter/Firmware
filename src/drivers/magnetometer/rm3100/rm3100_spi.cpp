@@ -70,7 +70,6 @@ public:
 	virtual ~RM3100_SPI() = default;
 
 	virtual int     init();
-	virtual int     ioctl(unsigned operation, unsigned &arg);
 	virtual int     read(unsigned address, void *data, unsigned count);
 	virtual int     write(unsigned address, void *data, unsigned count);
 };
@@ -119,27 +118,6 @@ RM3100_SPI::init()
 	}
 
 	return OK;
-}
-
-int
-RM3100_SPI::ioctl(unsigned operation, unsigned &arg)
-{
-	int ret;
-
-	switch (operation) {
-
-	case MAGIOCGEXTERNAL:
-		return external();
-
-	case DEVIOCGDEVICEID:
-		return CDev::ioctl(nullptr, operation, arg);
-
-	default: {
-			ret = -EINVAL;
-		}
-	}
-
-	return ret;
 }
 
 int

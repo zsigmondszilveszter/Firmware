@@ -67,7 +67,6 @@ public:
 	LIS3MDL_I2C(int bus);
 	virtual ~LIS3MDL_I2C() = default;
 
-	virtual int     ioctl(unsigned operation, unsigned &arg);
 	virtual int     read(unsigned address, void *data, unsigned count);
 	virtual int     write(unsigned address, void *data, unsigned count);
 
@@ -89,22 +88,6 @@ LIS3MDL_I2C::LIS3MDL_I2C(int bus) :
 	I2C("LIS3MDL_I2C", nullptr, bus, LIS3MDLL_ADDRESS, 400000)
 {
 	_device_id.devid_s.devtype = DRV_MAG_DEVTYPE_LIS3MDL;
-}
-
-int
-LIS3MDL_I2C::ioctl(unsigned operation, unsigned &arg)
-{
-	switch (operation) {
-
-	case MAGIOCGEXTERNAL:
-		return external();
-
-	case DEVIOCGDEVICEID:
-		return CDev::ioctl(nullptr, operation, arg);
-
-	default:
-		return  -EINVAL;
-	}
 }
 
 int

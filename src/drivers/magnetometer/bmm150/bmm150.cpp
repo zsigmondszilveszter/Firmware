@@ -765,15 +765,6 @@ BMM150::ioctl(struct file *filp, int cmd, unsigned long arg)
 	case MAGIOCSSCALE:
 		return OK;
 
-	case MAGIOCGSCALE:
-		return OK;
-
-	case MAGIOCCALIBRATE:
-		return OK;
-
-	case MAGIOCEXSTRAP:
-		return OK;
-
 	default:
 		/* give it to the superclass */
 		return I2C::ioctl(filp, cmd, arg);

@@ -70,8 +70,6 @@ public:
 	RM3100_I2C(int bus);
 	virtual ~RM3100_I2C() = default;
 
-	virtual int     init();
-	virtual int     ioctl(unsigned operation, unsigned &arg);
 	virtual int     read(unsigned address, void *data, unsigned count);
 	virtual int     write(unsigned address, void *data, unsigned count);
 
@@ -93,29 +91,6 @@ RM3100_I2C::RM3100_I2C(int bus) :
 	I2C("RM300_I2C", nullptr, bus, RM3100_ADDRESS, 400000)
 {
 	_device_id.devid_s.devtype = DRV_MAG_DEVTYPE_RM3100;
-}
-
-int
-RM3100_I2C::init()
-{
-	/* this will call probe() */
-	return I2C::init();
-}
-
-int
-RM3100_I2C::ioctl(unsigned operation, unsigned &arg)
-{
-	switch (operation) {
-
-	case MAGIOCGEXTERNAL:
-		return external();
-
-	case DEVIOCGDEVICEID:
-		return CDev::ioctl(nullptr, operation, arg);
-
-	default:
-		return  -EINVAL;
-	}
 }
 
 int

@@ -60,9 +60,9 @@ lis3mdl::calibrate(struct lis3mdl_bus_option &bus)
 		return PX4_ERROR;
 	}
 
-	if ((ret = ioctl(fd, MAGIOCCALIBRATE, fd)) != OK) {
-		PX4_WARN("failed to enable sensor calibration mode");
-	}
+//	if ((ret = ioctl(fd, MAGIOCCALIBRATE, fd)) != OK) {
+//		PX4_WARN("failed to enable sensor calibration mode");
+//	}
 
 	close(fd);
 
@@ -183,18 +183,6 @@ lis3mdl::test(struct lis3mdl_bus_option &bus)
 	}
 
 	print_message(report);
-
-	/* check if mag is onboard or external */
-	if (ioctl(fd, MAGIOCGEXTERNAL, 0) < 0) {
-		PX4_WARN("failed to get if mag is onboard or external");
-		return PX4_ERROR;
-	}
-
-	/* start the sensor polling at 2Hz */
-	if (ioctl(fd, SENSORIOCSPOLLRATE, 2) != OK) {
-		PX4_WARN("failed to set 2Hz poll rate");
-		return PX4_ERROR;
-	}
 
 	struct pollfd fds;
 

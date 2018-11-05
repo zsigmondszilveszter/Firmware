@@ -608,21 +608,6 @@ ACCELSIM::mag_ioctl(unsigned long cmd, unsigned long arg)
 		memcpy(&_mag_scale, (struct mag_calibration_s *) arg, sizeof(_mag_scale));
 		return OK;
 
-	case MAGIOCGSCALE:
-		/* copy scale out */
-		memcpy((struct mag_calibration_s *) arg, &_mag_scale, sizeof(_mag_scale));
-		return OK;
-
-	case MAGIOCSRANGE:
-		return mag_set_range(arg);
-
-	case MAGIOCGEXTERNAL:
-		/* Even if this sensor is on the "external" SPI bus
-		 * it is still fixed to the autopilot assembly,
-		 * so always return 0.
-		 */
-		return 0;
-
 	default:
 		/* give it to the superclass */
 		return VirtDevObj::devIOCTL(cmd, arg);

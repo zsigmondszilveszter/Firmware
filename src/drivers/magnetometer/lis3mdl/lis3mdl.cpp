@@ -139,12 +139,12 @@ LIS3MDL::calibrate(struct file *file_pointer, unsigned enable)
 		goto out;
 	}
 
-	/* Set to 12 Gauss */
-	if (ioctl(file_pointer, MAGIOCSRANGE, 12) != OK) {
-		PX4_WARN("FAILED: MAGIOCSRANGE 12 Ga");
-		ret = 1;
-		goto out;
-	}
+//	/* Set to 12 Gauss */
+//	if (ioctl(file_pointer, MAGIOCSRANGE, 12) != OK) {
+//		PX4_WARN("FAILED: MAGIOCSRANGE 12 Ga");
+//		ret = 1;
+//		goto out;
+//	}
 
 	usleep(20000);
 
@@ -204,12 +204,12 @@ LIS3MDL::calibrate(struct file *file_pointer, unsigned enable)
 	sum_non_excited[1] /= num_samples;
 	sum_non_excited[2] /= num_samples;
 
-	/* excite strap and take measurements */
-	if (ioctl(file_pointer, MAGIOCEXSTRAP, 1) != OK) {
-		PX4_WARN("FAILED: MAGIOCEXSTRAP 1");
-		ret = 1;
-		goto out;
-	}
+//	/* excite strap and take measurements */
+//	if (ioctl(file_pointer, MAGIOCEXSTRAP, 1) != OK) {
+//		PX4_WARN("FAILED: MAGIOCEXSTRAP 1");
+//		ret = 1;
+//		goto out;
+//	}
 
 	usleep(60000);
 
@@ -386,10 +386,7 @@ LIS3MDL::collect()
 	float temperature = report.t;
 	new_mag_report.temperature = 25.0f + (temperature / 8.0f);
 
-	// XXX revisit for SPI part, might require a bus type IOCTL
-
-	unsigned dummy = 0;
-	sensor_is_onboard = !_interface->ioctl(MAGIOCGEXTERNAL, dummy);
+	sensor_is_onboard = !_interface->external();
 	new_mag_report.is_external = !sensor_is_onboard;
 
 	/**
@@ -560,28 +557,10 @@ LIS3MDL::ioctl(struct file *file_pointer, int cmd, unsigned long arg)
 	case SENSORIOCRESET:
 		return reset();
 
-	case MAGIOCSRANGE:
-		return set_range(arg);
-
 	case MAGIOCSSCALE:
 		/* set new scale factors */
 		memcpy(&_scale, (struct mag_calibration_s *)arg, sizeof(_scale));
 		return 0;
-
-	case MAGIOCGSCALE:
-		/* copy out scale factors */
-		memcpy((struct mag_calibration_s *)arg, &_scale, sizeof(_scale));
-		return 0;
-
-	case MAGIOCCALIBRATE:
-		return calibrate(file_pointer, arg);
-
-	case MAGIOCEXSTRAP:
-		return set_excitement(arg);
-
-	case MAGIOCGEXTERNAL:
-		DEVICE_DEBUG("MAGIOCGEXTERNAL in main driver");
-		return _interface->ioctl(cmd, dummy);
 
 	case DEVIOCGDEVICEID:
 		return _interface->ioctl(cmd, dummy);

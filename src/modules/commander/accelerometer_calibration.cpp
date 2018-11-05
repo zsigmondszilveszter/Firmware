@@ -149,7 +149,7 @@
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/sensor_correction.h>
 
-static const char *sensor_name = "accel";
+static constexpr char sensor_name_accel[] = "accel";
 
 static int32_t device_id[max_accel_sens];
 static int device_prio_max = 0;
@@ -175,7 +175,7 @@ int do_accel_calibration(orb_advert_t *mavlink_log_pub)
 	int fd;
 #endif
 
-	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, sensor_name);
+	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, sensor_name_accel);
 
 	struct accel_calibration_s accel_scale;
 	accel_scale.x_offset = 0.0f;
@@ -409,10 +409,10 @@ int do_accel_calibration(orb_advert_t *mavlink_log_pub)
 		/* if there is a any preflight-check system response, let the barrage of messages through */
 		usleep(200000);
 
-		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
+		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name_accel);
 
 	} else {
-		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
+		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name_accel);
 	}
 
 	/* give this message enough time to propagate */

@@ -645,24 +645,10 @@ IST8310::ioctl(struct file *filp, int cmd, unsigned long arg)
 	case SENSORIOCRESET:
 		return reset();
 
-	case MAGIOCEXSTRAP:
-		return set_selftest(arg);
-
 	case MAGIOCSSCALE:
 		/* set new scale factors */
 		memcpy(&_scale, (struct mag_calibration_s *)arg, sizeof(_scale));
 		return 0;
-
-	case MAGIOCGSCALE:
-		/* copy out scale factors */
-		memcpy((struct mag_calibration_s *)arg, &_scale, sizeof(_scale));
-		return 0;
-
-	case MAGIOCCALIBRATE:
-		return calibrate(filp, arg);
-
-	case MAGIOCGEXTERNAL:
-		return external();
 
 	default:
 		/* give it to the superclass */
@@ -960,11 +946,11 @@ int IST8310::calibrate(struct file *filp, unsigned enable)
 	float sum_in_normal[3] = {0.0f, 0.0f, 0.0f};
 	float *sum = &sum_in_normal[0];
 
-	if (OK != ioctl(filp, MAGIOCGSCALE, (long unsigned int)&mscale_previous)) {
-		PX4_WARN("FAILED: MAGIOCGSCALE 1");
-		ret = 1;
-		goto out;
-	}
+//	if (OK != ioctl(filp, MAGIOCGSCALE, (long unsigned int)&mscale_previous)) {
+//		PX4_WARN("FAILED: MAGIOCGSCALE 1");
+//		ret = 1;
+//		goto out;
+//	}
 
 	if (OK != ioctl(filp, MAGIOCSSCALE, (long unsigned int)&mscale_null)) {
 		PX4_WARN("FAILED: MAGIOCSSCALE 1");
@@ -988,11 +974,11 @@ int IST8310::calibrate(struct file *filp, unsigned enable)
 
 			/* start the Self test */
 
-			if (OK != ioctl(filp, MAGIOCEXSTRAP, 1)) {
-				PX4_WARN("FAILED: MAGIOCEXSTRAP 1");
-				ret = 1;
-				goto out;
-			}
+//			if (OK != ioctl(filp, MAGIOCEXSTRAP, 1)) {
+//				PX4_WARN("FAILED: MAGIOCEXSTRAP 1");
+//				ret = 1;
+//				goto out;
+//			}
 
 			sum = &sum_in_test[0];
 		}
@@ -1045,9 +1031,9 @@ out:
 
 	/* set back to normal mode */
 
-	if (OK != ::ioctl(fd, MAGIOCEXSTRAP, 0)) {
-		PX4_WARN("FAILED: MAGIOCEXSTRAP 0");
-	}
+//	if (OK != ::ioctl(fd, MAGIOCEXSTRAP, 0)) {
+//		PX4_WARN("FAILED: MAGIOCEXSTRAP 0");
+//	}
 
 	if (ret == OK) {
 		if (check_scale()) {
@@ -1306,11 +1292,6 @@ test(enum IST8310_BUS busid)
 
 	print_message(report);
 
-	/* check if mag is onboard or external */
-	if ((ret = ioctl(fd, MAGIOCGEXTERNAL, 0)) < 0) {
-		errx(1, "failed to get if mag is onboard or external");
-	}
-
 	/* read the sensor 5x and report each value */
 	for (unsigned i = 0; i < 5; i++) {
 		struct pollfd fds;
@@ -1365,21 +1346,21 @@ test(enum IST8310_BUS busid)
  */
 int calibrate(enum IST8310_BUS busid)
 {
-	int ret;
+	int ret = PX4_OK;
 	struct ist8310_bus_option &bus = find_bus(busid);
 	const char *path = bus.devpath;
 
-	int fd = open(path, O_RDONLY);
+	int fd = px4_open(path, O_RDONLY);
 
 	if (fd < 0) {
 		err(1, "%s open failed (try 'ist8310 start' if the driver is not running", path);
 	}
 
-	if (OK != (ret = ioctl(fd, MAGIOCCALIBRATE, fd))) {
-		PX4_WARN("failed to enable sensor calibration mode");
-	}
+//	if (OK != (ret = ioctl(fd, MAGIOCCALIBRATE, fd))) {
+//		PX4_WARN("failed to enable sensor calibration mode");
+//	}
 
-	close(fd);
+	px4_close(fd);
 
 	return ret;
 }

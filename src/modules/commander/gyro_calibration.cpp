@@ -46,10 +46,6 @@
 #include <px4_posix.h>
 #include <px4_defines.h>
 #include <px4_time.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <poll.h>
 #include <cmath>
 #include <string.h>
 #include <drivers/drv_hrt.h>
@@ -58,9 +54,8 @@
 #include <drivers/drv_gyro.h>
 #include <systemlib/mavlink_log.h>
 #include <parameters/param.h>
-#include <systemlib/err.h>
 
-static const char *sensor_name = "gyro";
+static constexpr char sensor_name_gyro[] = "gyro";
 
 static const unsigned max_gyros = 3;
 
@@ -210,7 +205,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 	int			res = PX4_OK;
 	gyro_worker_data_t	worker_data = {};
 
-	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, sensor_name);
+	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, sensor_name_gyro);
 
 	worker_data.mavlink_log_pub = mavlink_log_pub;
 
@@ -503,9 +498,9 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 	usleep(200000);
 
 	if (res == PX4_OK) {
-		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
+		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name_gyro);
 	} else {
-		calibration_log_info(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
+		calibration_log_info(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name_gyro);
 	}
 
 	orb_unsubscribe(worker_data.sensor_correction_sub);

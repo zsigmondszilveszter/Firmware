@@ -56,12 +56,12 @@
 #include <parameters/param.h>
 #include <systemlib/err.h>
 
-static const char *sensor_name = "airspeed";
+static constexpr char sensor_name_airspeed[] = "airspeed";
 
 static void feedback_calibration_failed(orb_advert_t *mavlink_log_pub)
 {
 	sleep(5);
-	calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
+	calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name_airspeed);
 }
 
 int do_airspeed_calibration(orb_advert_t *mavlink_log_pub)
@@ -71,7 +71,7 @@ int do_airspeed_calibration(orb_advert_t *mavlink_log_pub)
 	const unsigned maxcount = 2400;
 
 	/* give directions */
-	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, sensor_name);
+	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, sensor_name_airspeed);
 
 	const unsigned calibration_count = (maxcount * 2) / 3;
 
@@ -263,7 +263,7 @@ int do_airspeed_calibration(orb_advert_t *mavlink_log_pub)
 
 	calibration_log_info(mavlink_log_pub, CAL_QGC_PROGRESS_MSG, 100);
 
-	calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
+	calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name_airspeed);
 	tune_neutral(true);
 
 	/* Wait 2sec for the airflow to stop and ensure the driver filter has caught up, otherwise

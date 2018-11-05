@@ -176,12 +176,6 @@ rm3100::test(RM3100_BUS bus_id)
 
 	print_message(report);
 
-	/* check if mag is onboard or external */
-	if (ioctl(fd, MAGIOCGEXTERNAL, 0) < 0) {
-		PX4_WARN("failed to get if mag is onboard or external");
-		return 1;
-	}
-
 	struct pollfd fds;
 
 	/* read the sensor 5x and report each value */

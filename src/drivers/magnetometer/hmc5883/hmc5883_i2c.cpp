@@ -37,19 +37,7 @@
  * I2C interface for HMC5883 / HMC 5983
  */
 
-/* XXX trim includes */
 #include <px4_config.h>
-
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
-#include <assert.h>
-#include <debug.h>
-#include <errno.h>
-#include <unistd.h>
-
-#include <arch/board/board.h>
 
 #include <drivers/device/i2c.h>
 #include <drivers/drv_mag.h>
@@ -57,7 +45,7 @@
 
 #include "hmc5883.h"
 
-#include "board_config.h"
+#include <string.h>
 
 #define HMC5883L_ADDRESS		0x1E
 
@@ -67,15 +55,14 @@ class HMC5883_I2C : public device::I2C
 {
 public:
 	HMC5883_I2C(int bus);
-	virtual ~HMC5883_I2C() = default;
+	~HMC5883_I2C() override = default;
 
-	virtual int	read(unsigned address, void *data, unsigned count);
-	virtual int	write(unsigned address, void *data, unsigned count);
-
-	virtual int	ioctl(unsigned operation, unsigned &arg);
+	int	read(unsigned address, void *data, unsigned count) override;
+	int	write(unsigned address, void *data, unsigned count) override;
 
 protected:
-	virtual int	probe();
+
+	int	probe() override;
 
 };
 
@@ -88,39 +75,19 @@ HMC5883_I2C_interface(int bus)
 HMC5883_I2C::HMC5883_I2C(int bus) :
 	I2C("HMC5883_I2C", nullptr, bus, HMC5883L_ADDRESS, 400000)
 {
-	_device_id.devid_s.devtype = DRV_MAG_DEVTYPE_HMC5883;
-}
-
-int
-HMC5883_I2C::ioctl(unsigned operation, unsigned &arg)
-{
-	int ret;
-
-	switch (operation) {
-
-	case MAGIOCGEXTERNAL:
-		return external();
-
-	case DEVIOCGDEVICEID:
-		return CDev::ioctl(nullptr, operation, arg);
-
-	default:
-		ret = -EINVAL;
-	}
-
-	return ret;
 }
 
 int
 HMC5883_I2C::probe()
 {
-	uint8_t data[3] = {0, 0, 0};
+	uint8_t data[3] {};
 
 	_retries = 10;
 
 	if (read(ADDR_ID_A, &data[0], 1) ||
 	    read(ADDR_ID_B, &data[1], 1) ||
 	    read(ADDR_ID_C, &data[2], 1)) {
+
 		DEVICE_DEBUG("read_reg fail");
 		return -EIO;
 	}
@@ -130,11 +97,12 @@ HMC5883_I2C::probe()
 	if ((data[0] != ID_A_WHO_AM_I) ||
 	    (data[1] != ID_B_WHO_AM_I) ||
 	    (data[2] != ID_C_WHO_AM_I)) {
+
 		DEVICE_DEBUG("ID byte mismatch (%02x,%02x,%02x)", data[0], data[1], data[2]);
 		return -EIO;
 	}
 
-	return OK;
+	return PX4_OK;
 }
 
 int

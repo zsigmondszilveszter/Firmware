@@ -300,14 +300,6 @@ LSM303AGR::ioctl(struct file *filp, int cmd, unsigned long arg)
 
 		return 0;
 
-	case MAGIOCGSCALE:
-		/* copy out scale factors */
-		memcpy((struct mag_calibration_s *)arg, &_mag_scale, sizeof(_mag_scale));
-		return 0;
-
-	case MAGIOCGEXTERNAL:
-		return external();
-
 	default:
 		/* give it to the superclass */
 		return CDev::ioctl(filp, cmd, arg);

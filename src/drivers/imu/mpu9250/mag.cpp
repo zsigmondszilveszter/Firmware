@@ -322,11 +322,6 @@ MPU9250_mag::ioctl(struct file *filp, int cmd, unsigned long arg)
 		memcpy(&_mag_scale, (struct mag_scale *) arg, sizeof(_mag_scale));
 		return OK;
 
-	case MAGIOCGSCALE:
-		/* copy scale out */
-		memcpy((struct mag_scale *) arg, &_mag_scale, sizeof(_mag_scale));
-		return OK;
-
 	default:
 		return (int)CDev::ioctl(filp, cmd, arg);
 	}

@@ -1090,11 +1090,6 @@ ADIS16448::mag_ioctl(struct file *filp, int cmd, unsigned long arg)
 		memcpy(&_mag_scale, (struct mag_calibration_s *) arg, sizeof(_mag_scale));
 		return OK;
 
-	case MAGIOCGSCALE:
-		/* copy scale out */
-		memcpy((struct mag_calibration_s *) arg, &_mag_scale, sizeof(_mag_scale));
-		return OK;
-
 	default:
 		/* give it to the superclass */
 		return SPI::ioctl(filp, cmd, arg);
@@ -1367,7 +1362,7 @@ ADIS16448::measure()
 
 	_gyro_reports ->force(&grb);
 	_accel_reports->force(&arb);
-	_mag_reports  ->force(&mrb);
+	_mag_reports->force(&mrb);
 
 	/* notify anyone waiting for data */
 	if (accel_notify) {

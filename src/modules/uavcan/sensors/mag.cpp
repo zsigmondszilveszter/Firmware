@@ -106,21 +106,6 @@ int UavcanMagnetometerBridge::ioctl(struct file *filp, int cmd, unsigned long ar
 			return 0;
 		}
 
-	case MAGIOCGSCALE: {
-			std::memcpy(reinterpret_cast<void *>(arg), &_scale, sizeof(_scale));
-			return 0;
-		}
-
-	case MAGIOCGEXTERNAL: {
-			return 1;           // declare it external rise it's priority and to allow for correct orientation compensation
-		}
-
-	case MAGIOCCALIBRATE:
-	case MAGIOCSRANGE:
-	case MAGIOCEXSTRAP: {
-			return -EINVAL;
-		}
-
 	default: {
 			return CDev::ioctl(filp, cmd, arg);
 		}

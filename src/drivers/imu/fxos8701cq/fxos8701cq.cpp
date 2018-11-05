@@ -922,18 +922,6 @@ FXOS8701CQ::mag_ioctl(struct file *filp, int cmd, unsigned long arg)
 		memcpy(&_mag_scale, (struct mag_calibration_s *) arg, sizeof(_mag_scale));
 		return OK;
 
-	case MAGIOCGSCALE:
-		/* copy scale out */
-		memcpy((struct mag_calibration_s *) arg, &_mag_scale, sizeof(_mag_scale));
-		return OK;
-
-	case MAGIOCGEXTERNAL:
-		/* Even if this sensor is on the "external" SPI bus
-		 * it is still fixed to the autopilot assembly,
-		 * so always return 0.
-		 */
-		return 0;
-
 	default:
 		/* give it to the superclass */
 		return SPI::ioctl(filp, cmd, arg);
@@ -1729,14 +1717,6 @@ test()
 		PX4_ERR("%s open failed", FXOS8701C_DEVICE_PATH_MAG);
 		goto exit_with_accel;
 	}
-
-	/* check if mag is onboard or external */
-	if ((ret = ioctl(fd_mag, MAGIOCGEXTERNAL, 0)) < 0) {
-		PX4_ERR("failed to get if mag is onboard or external");
-		goto exit_with_mag_accel;
-	}
-
-	PX4_INFO("mag device active: %s", ret ? "external" : "onboard");
 
 	/* do a simple demand read */
 	sz = read(fd_mag, &m_report, sizeof(m_report));

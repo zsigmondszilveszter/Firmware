@@ -933,18 +933,6 @@ LSM303D::mag_ioctl(struct file *filp, int cmd, unsigned long arg)
 		memcpy(&_mag_scale, (struct mag_calibration_s *) arg, sizeof(_mag_scale));
 		return OK;
 
-	case MAGIOCGSCALE:
-		/* copy scale out */
-		memcpy((struct mag_calibration_s *) arg, &_mag_scale, sizeof(_mag_scale));
-		return OK;
-
-	case MAGIOCGEXTERNAL:
-		/* Even if this sensor is on the "external" SPI bus
-		 * it is still fixed to the autopilot assembly,
-		 * so always return 0.
-		 */
-		return 0;
-
 	default:
 		/* give it to the superclass */
 		return SPI::ioctl(filp, cmd, arg);
@@ -1773,9 +1761,8 @@ void
 test()
 {
 	int fd_accel = -1;
-	sensor_accel_s accel_report;
+	sensor_accel_s accel_report{};
 	ssize_t sz;
-	int ret;
 
 	/* get the driver */
 	fd_accel = open(LSM303D_DEVICE_PATH_ACCEL, O_RDONLY);
@@ -1794,7 +1781,7 @@ test()
 	print_message(accel_report);
 
 	int fd_mag = -1;
-	struct mag_report m_report;
+	sensor_mag_s m_report{};
 
 	/* get the driver */
 	fd_mag = open(LSM303D_DEVICE_PATH_MAG, O_RDONLY);
@@ -1802,13 +1789,6 @@ test()
 	if (fd_mag < 0) {
 		err(1, "%s open failed", LSM303D_DEVICE_PATH_MAG);
 	}
-
-	/* check if mag is onboard or external */
-	if ((ret = ioctl(fd_mag, MAGIOCGEXTERNAL, 0)) < 0) {
-		errx(1, "failed to get if mag is onboard or external");
-	}
-
-	PX4_INFO("mag device active: %s", ret ? "external" : "onboard");
 
 	/* do a simple demand read */
 	sz = read(fd_mag, &m_report, sizeof(m_report));

@@ -230,8 +230,7 @@ RM3100::collect()
 	new_mag_report.temperature = 0.0f;
 
 	// XXX revisit for SPI part, might require a bus type IOCTL
-	unsigned dummy = 0;
-	sensor_is_onboard = !_interface->ioctl(MAGIOCGEXTERNAL, dummy);
+	sensor_is_onboard = !_interface->external();
 	new_mag_report.is_external = !sensor_is_onboard;
 
 	/**
@@ -367,8 +366,6 @@ RM3100::init()
 int
 RM3100::ioctl(struct file *file_pointer, int cmd, unsigned long arg)
 {
-	unsigned dummy = 0;
-
 	switch (cmd) {
 	case SENSORIOCSPOLLRATE: {
 			switch (arg) {
@@ -421,31 +418,13 @@ RM3100::ioctl(struct file *file_pointer, int cmd, unsigned long arg)
 	case SENSORIOCRESET:
 		return reset();
 
-	case MAGIOCSRANGE:
-		/* field measurement range cannot be configured for this sensor (8 Gauss) */
-		return OK;
-
 	case MAGIOCSSCALE:
 		/* set new scale factors */
 		memcpy(&_scale, (struct mag_calibration_s *)arg, sizeof(_scale));
 		return 0;
 
-	case MAGIOCGSCALE:
-		/* copy out scale factors */
-		memcpy((struct mag_calibration_s *)arg, &_scale, sizeof(_scale));
-		return 0;
-
-
-	case MAGIOCCALIBRATE:
-		/* This is left for compatibility with the IOCTL call in mag calibration */
-		return OK;
-
-	case MAGIOCGEXTERNAL:
-		DEVICE_DEBUG("MAGIOCGEXTERNAL in main driver");
-		return _interface->ioctl(cmd, dummy);
-
 	case DEVIOCGDEVICEID:
-		return _interface->ioctl(cmd, dummy);
+		return _interface->get_device_id();
 
 	default:
 		/* give it to the superclass */
