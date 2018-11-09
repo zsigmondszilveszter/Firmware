@@ -75,7 +75,6 @@
 #include <px4_time.h>
 #include <circuit_breaker/circuit_breaker.h>
 #include <systemlib/err.h>
-#include <systemlib/hysteresis/hysteresis.h>
 #include <systemlib/mavlink_log.h>
 #include <parameters/param.h>
 
@@ -147,8 +146,6 @@ static unsigned int leds_counter;
 /* To remember when last notification was sent */
 static uint64_t last_print_mode_reject_time = 0;
 
-static systemlib::Hysteresis auto_disarm_hysteresis(false);
-
 static float min_stick_change = 0.25f;
 
 static struct vehicle_status_s status = {};
@@ -178,8 +175,6 @@ static uint64_t rc_signal_lost_timestamp;		// Time at which the RC reception was
 static uint8_t arm_requirements = ARM_REQ_NONE;
 
 static bool _last_condition_global_position_valid = false;
-
-static struct vehicle_land_detected_s land_detector = {};
 
 static float _eph_threshold_adj = INFINITY;	///< maximum allowable horizontal position uncertainty after adjustment for flight condition
 static bool _skip_pos_accuracy_check = false;
@@ -533,6 +528,15 @@ Commander::Commander() :
 	_failure_detector(this)
 {
 	_battery_sub = orb_subscribe(ORB_ID(battery_status));
+	_land_detected_sub = orb_subscribe(ORB_ID(vehicle_land_detected));
+
+	_auto_disarm_hysteresis.set_hysteresis_time_from(false, 10_s);
+}
+
+Commander::~Commander()
+{
+	orb_unsubscribe(_battery_sub);
+	orb_unsubscribe(_land_detected_sub);
 }
 
 bool
@@ -1092,8 +1096,6 @@ Commander::run()
 {
 	bool sensor_fail_tune_played = false;
 	bool arm_tune_played = false;
-	bool was_landed = true;
-	bool was_falling = false;
 	bool was_armed = false;
 
 	// XXX for now just set sensors as initialized
@@ -1239,10 +1241,6 @@ Commander::run()
 	int offboard_control_mode_sub = orb_subscribe(ORB_ID(offboard_control_mode));
 	memset(&offboard_control_mode, 0, sizeof(offboard_control_mode));
 
-	/* Subscribe to land detector */
-	int land_detector_sub = orb_subscribe(ORB_ID(vehicle_land_detected));
-	land_detector.landed = true;
-
 	/* Subscribe to command topic */
 	int cmd_sub = orb_subscribe(ORB_ID(vehicle_command));
 
@@ -1338,10 +1336,7 @@ Commander::run()
 	uint64_t timestamp_engine_healthy = 0; /**< absolute time when engine was healty */
 
 	/* check which state machines for changes, clear "changed" flag */
-	bool main_state_changed = false;
 	bool failsafe_old = false;
-
-	bool have_taken_off_since_arming = false;
 
 	/* initialize low priority thread */
 	pthread_attr_t commander_low_prio_attr;
@@ -1626,61 +1621,24 @@ Commander::run()
 
 		estimator_check(&status_changed);
 
-		/* Update land detector */
-		orb_check(land_detector_sub, &updated);
-
-		if (updated) {
-			orb_copy(ORB_ID(vehicle_land_detected), land_detector_sub, &land_detector);
-
-			// Only take actions if armed
-			if (armed.armed) {
-				if (was_landed != land_detector.landed) {
-					if (land_detector.landed) {
-						mavlink_and_console_log_info(&mavlink_log_pub, "Landing detected");
-
-					} else {
-						mavlink_and_console_log_info(&mavlink_log_pub, "Takeoff detected");
-						have_taken_off_since_arming = true;
-
-						// Set all position and velocity test probation durations to takeoff value
-						// This is a larger value to give the vehicle time to complete a failsafe landing
-						// if faulty sensors cause loss of navigation shortly after takeoff.
-						_gpos_probation_time_us = _failsafe_pos_probation.get() * 1_s;
-						_lpos_probation_time_us = _failsafe_pos_probation.get() * 1_s;
-						_lvel_probation_time_us = _failsafe_pos_probation.get() * 1_s;
-					}
-				}
-
-				if (was_falling != land_detector.freefall) {
-					if (land_detector.freefall) {
-						mavlink_and_console_log_info(&mavlink_log_pub, "Freefall detected");
-					}
-				}
-			}
-
-			was_landed = land_detector.landed;
-			was_falling = land_detector.freefall;
-		}
-
-		// Auto disarm when landed
-		if (!have_taken_off_since_arming) {
-			// pilot has ten seconds time to take off
-			auto_disarm_hysteresis.set_hysteresis_time_from(false, 10_s);
-		} else {
-			auto_disarm_hysteresis.set_hysteresis_time_from(false, _disarm_when_landed_timeout.get() * 1_s);
-		}
+		landed_update();
 
 		// Check for auto-disarm
-		if (armed.armed && land_detector.landed && _disarm_when_landed_timeout.get() > FLT_EPSILON) {
-			auto_disarm_hysteresis.set_state_and_update(true);
+		if (armed.armed) {
+			if (_landed && _disarm_when_landed_timeout.get() > FLT_EPSILON) {
+				_auto_disarm_hysteresis.set_state_and_update(true);
 
+			} else {
+				_auto_disarm_hysteresis.set_state_and_update(false);
+			}
+
+			if (_auto_disarm_hysteresis.get_state()) {
+				arm_disarm(false, &mavlink_log_pub, "auto disarm on land");
+			}
 		} else {
-			auto_disarm_hysteresis.set_state_and_update(false);
+			_auto_disarm_hysteresis.set_state_and_update(false);
 		}
 
-		if (auto_disarm_hysteresis.get_state()) {
-			arm_disarm(false, &mavlink_log_pub, "auto disarm on land");
-		}
 
 		if (!warning_action_on) {
 			// store the last good main_state when not in an navigation
@@ -1938,14 +1896,15 @@ Commander::run()
 
 			if (in_armed_state &&
 			    status.rc_input_mode != vehicle_status_s::RC_IN_MODE_OFF &&
-			    (status.is_rotary_wing || (!status.is_rotary_wing && land_detector.landed)) &&
+			    (status.is_rotary_wing || (!status.is_rotary_wing && _landed)) &&
 			    (stick_in_lower_left || arm_button_pressed || arm_switch_to_disarm_transition)) {
 
 				if (internal_state.main_state != commander_state_s::MAIN_STATE_MANUAL &&
 				    internal_state.main_state != commander_state_s::MAIN_STATE_ACRO &&
 				    internal_state.main_state != commander_state_s::MAIN_STATE_STAB &&
 				    internal_state.main_state != commander_state_s::MAIN_STATE_RATTITUDE &&
-				    !land_detector.landed) {
+				    !_landed) {
+
 					print_reject_arm("NOT DISARMING: Not in manual mode or landed yet.");
 
 				} else if ((stick_off_counter == rc_arm_hyst && stick_on_counter < rc_arm_hyst) || arm_switch_to_disarm_transition) {
@@ -2039,7 +1998,7 @@ Commander::run()
 			/* play tune on mode change only if armed, blink LED always */
 			if (main_res == TRANSITION_CHANGED || first_rc_eval) {
 				tune_positive(armed.armed);
-				main_state_changed = true;
+				status_changed = true;
 
 			} else if (main_res == TRANSITION_DENIED) {
 				/* DENIED here indicates bug in the commander */
@@ -2259,7 +2218,7 @@ Commander::run()
 			const vehicle_local_position_s &local_position = _local_position_sub.get();
 
 			if (armed.armed) {
-				if ((!was_armed || (was_landed && !land_detector.landed)) &&
+				if ((!was_armed || (_was_landed && !_landed)) &&
 				    (hrt_elapsed_time(&commander_boot_timestamp) > INAIR_RESTART_HOLDOFF_INTERVAL)) {
 
 					/* update home position on arming if at least 500 ms from commander start spent to avoid setting home on in-air restart */
@@ -2268,7 +2227,7 @@ Commander::run()
 
 			} else {
 				if (status_flags.condition_home_position_valid) {
-					if (land_detector.landed && local_position.xy_valid && local_position.z_valid) {
+					if (_landed && local_position.xy_valid && local_position.z_valid) {
 						/* distance from home */
 						float home_dist_xy = -1.0f;
 						float home_dist_z = -1.0f;
@@ -2320,7 +2279,7 @@ Commander::run()
 						       _mission_result_sub.get().finished,
 						       _mission_result_sub.get().stay_in_failsafe,
 						       status_flags,
-						       land_detector.landed,
+						       _landed,
 						       (link_loss_actions_t)rc_loss_act,
 						       offboard_loss_act,
 						       offboard_loss_rc_act,
@@ -2339,14 +2298,8 @@ Commander::run()
 			failsafe_old = status.failsafe;
 		}
 
-		// TODO handle mode changes by commands
-		if (main_state_changed || nav_state_changed) {
-			status_changed = true;
-			main_state_changed = false;
-		}
-
 		/* publish states (armed, control_mode, vehicle_status, commander_state, vehicle_status_flags) at 1 Hz or immediately when changed */
-		if (hrt_elapsed_time(&status.timestamp) >= 1_s || status_changed) {
+		if (hrt_elapsed_time(&status.timestamp) >= 1_s || status_changed || nav_state_changed) {
 
 			set_control_mode();
 			control_mode.timestamp = now;
@@ -2457,11 +2410,6 @@ Commander::run()
 
 		status_changed = false;
 
-		if (!armed.armed) {
-			/* Reset the flag if disarmed. */
-			have_taken_off_since_arming = false;
-		}
-
 		arm_auth_update(now, params_updated || param_init_forced);
 
 		usleep(COMMANDER_MONITORING_INTERVAL);
@@ -2481,13 +2429,12 @@ Commander::run()
 	/* close fds */
 	led_deinit();
 	buzzer_deinit();
-	px4_close(sp_man_sub);
-	px4_close(offboard_control_mode_sub);
-	px4_close(safety_sub);
-	px4_close(cmd_sub);
-	px4_close(subsys_sub);
-	px4_close(param_changed_sub);
-	px4_close(land_detector_sub);
+	orb_unsubscribe(sp_man_sub);
+	orb_unsubscribe(offboard_control_mode_sub);
+	orb_unsubscribe(safety_sub);
+	orb_unsubscribe(cmd_sub);
+	orb_unsubscribe(subsys_sub);
+	orb_unsubscribe(param_changed_sub);
 
 	thread_running = false;
 }
@@ -3073,7 +3020,7 @@ Commander::check_posvel_validity(const bool data_valid, const float data_accurac
 	bool valid = was_valid;
 
 	// constrain probation times
-	if (land_detector.landed) {
+	if (_landed) {
 		*probation_time_us = POSVEL_PROBATION_MIN;
 	}
 
@@ -4055,13 +4002,8 @@ void Commander::estimator_check(bool *status_changed)
 
 			if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY) {
 				// reset flags and timer
-				_time_at_takeoff = hrt_absolute_time();
 				_nav_test_failed = false;
 				_nav_test_passed = false;
-
-			} else if (land_detector.landed) {
-				// record time of takeoff
-				_time_at_takeoff = hrt_absolute_time();
 
 			} else {
 				// if nav status is unconfirmed, confirm yaw angle as passed after 30 seconds or achieving 5 m/s of speed
@@ -4120,4 +4062,50 @@ void Commander::estimator_check(bool *status_changed)
 	}
 
 	check_valid(lpos.timestamp, _failsafe_pos_delay.get() * 1_s, lpos.z_valid, &(status_flags.condition_local_altitude_valid), status_changed);
+}
+
+void Commander::landed_update()
+{
+	/* Update land detector */
+	bool updated = false;
+	orb_check(_land_detected_sub, &updated);
+
+	if (updated) {
+		_was_landed = _landed;
+
+		vehicle_land_detected_s land_detector{};
+		orb_copy(ORB_ID(vehicle_land_detected), _land_detected_sub, &land_detector);
+
+		// Only take actions if armed
+		if (armed.armed) {
+			if (_landed != land_detector.landed) {
+				if (land_detector.landed) {
+					mavlink_and_console_log_info(&mavlink_log_pub, "Landing detected");
+
+				} else {
+					mavlink_and_console_log_info(&mavlink_log_pub, "Takeoff detected");
+
+					// update auto disarm time after first takeoff
+					_auto_disarm_hysteresis.set_hysteresis_time_from(false, _disarm_when_landed_timeout.get() * 1_s);
+
+					// record time of takeoff
+					_time_at_takeoff = hrt_absolute_time();
+
+					// Set all position and velocity test probation durations to takeoff value
+					// This is a larger value to give the vehicle time to complete a failsafe landing
+					// if faulty sensors cause loss of navigation shortly after takeoff.
+					_gpos_probation_time_us = _failsafe_pos_probation.get() * 1_s;
+					_lpos_probation_time_us = _failsafe_pos_probation.get() * 1_s;
+					_lvel_probation_time_us = _failsafe_pos_probation.get() * 1_s;
+				}
+			}
+
+			if (land_detector.freefall && _falling) {
+				mavlink_and_console_log_info(&mavlink_log_pub, "Freefall detected");
+			}
+		}
+
+		_landed = land_detector.landed;
+		_falling = land_detector.freefall;
+	}
 }

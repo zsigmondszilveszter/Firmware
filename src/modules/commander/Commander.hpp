@@ -37,10 +37,11 @@
 #include "state_machine_helper.h"
 #include "failure_detector/FailureDetector.hpp"
 
-#include <controllib/blocks.hpp>
+#include <lib/controllib/blocks.hpp>
+#include <lib/mathlib/mathlib.h>
 #include <px4_module.h>
 #include <px4_module_params.h>
-#include <mathlib/mathlib.h>
+#include <systemlib/hysteresis/hysteresis.h>
 
 // publications
 #include <uORB/Publication.hpp>
@@ -72,6 +73,7 @@ class Commander : public ModuleBase<Commander>, public ModuleParams
 {
 public:
 	Commander();
+	~Commander();
 
 	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
@@ -147,7 +149,8 @@ private:
 	// Set the system main state based on the current RC inputs
 	transition_result_t set_main_state_rc(const vehicle_status_s &status, bool *changed);
 
-	void check_valid(const hrt_abstime &timestamp, const hrt_abstime &timeout, const bool valid_in, bool *valid_out, bool *changed);
+	void check_valid(const hrt_abstime &timestamp, const hrt_abstime &timeout, const bool valid_in, bool *valid_out,
+			 bool *changed);
 
 	bool check_posvel_validity(const bool data_valid, const float data_accuracy, const float required_accuracy,
 				   const hrt_abstime &data_timestamp_us, hrt_abstime *last_fail_time_us, hrt_abstime *probation_time_us, bool *valid_state,
@@ -181,11 +184,22 @@ private:
 
 	void estimator_check(bool *status_changed);
 
+	// battery
 	int _battery_sub{-1};
 	uint8_t _battery_warning{battery_status_s::BATTERY_WARNING_NONE};
 	float _battery_current{0.0f};
 
 	void battery_status_check();
+
+	// land detector
+	int _land_detected_sub{-1};
+	bool _landed{true};
+	bool _was_landed{true};
+	bool _falling{false};
+
+	void landed_update();
+
+	systemlib::Hysteresis _auto_disarm_hysteresis{false};
 
 	// Subscriptions
 	Subscription<estimator_status_s>		_estimator_status_sub{ORB_ID(estimator_status)};
