@@ -26,7 +26,7 @@ set(config_module_list
 	drivers/camera_trigger
 	drivers/gps
 	drivers/imu/adis16477
-	#drivers/imu/adis16497
+	drivers/imu/adis16497
 	drivers/irlock
 	drivers/mkblctrl
 	drivers/pwm_out_sim
