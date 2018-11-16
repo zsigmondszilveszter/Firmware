@@ -33,7 +33,7 @@
 
 set(SRCS)
 
-if (NOT "${OS}" MATCHES "qurt")
+if (NOT "${PX4_PLATFORM}" MATCHES "qurt")
 	list(APPEND SRCS
 		px4_log.c
 		)
