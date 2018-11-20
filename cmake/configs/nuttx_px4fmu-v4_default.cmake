@@ -29,6 +29,7 @@ set(config_module_list
 	drivers/mkblctrl
 	drivers/oreoled
 	drivers/pca9685
+	drivers/pmw3901
 	drivers/pwm_input
 	drivers/pwm_out_sim
 	drivers/px4flow

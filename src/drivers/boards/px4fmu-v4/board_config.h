@@ -100,6 +100,11 @@
 #define GPIO_DRDY_PORTC_PIN14        (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTC|GPIO_PIN14)
 #define GPIO_DRDY_PORTE_PIN12        (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTE|GPIO_PIN12)
 
+/* Define the Data Ready interrupts On SPI 4. */
+#define GPIO_DRDY_PORTE_PIN6        (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTE|GPIO_PIN6)
+#define GPIO_DRDY_PORTE_PIN5        (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTE|GPIO_PIN5)
+#define GPIO_DRDY_PORTE_PIN2        (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTE|GPIO_PIN2)
+
 
 /* Define the Chip Selects for SPI2. */
 #define GPIO_SPI2_CS_MS5611          (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTD|GPIO_PIN7)
@@ -128,6 +133,16 @@
 #define GPIO_DRDY_OFF_PORTC_PIN14    _PIN_OFF(GPIO_DRDY_PORTC_PIN14)
 #define GPIO_DRDY_OFF_PORTE_PIN12    _PIN_OFF(GPIO_DRDY_PORTE_PIN12)
 
+/* SPI 4 bus off. */
+#define GPIO_SPI4_SCK_OFF            _PIN_OFF(GPIO_SPI4_SCK)
+#define GPIO_SPI4_MISO_OFF           _PIN_OFF(GPIO_SPI4_MISO)
+#define GPIO_SPI4_MOSI_OFF           _PIN_OFF(GPIO_SPI4_MOSI)
+
+/* SPI 4 DRDY's off. */
+#define GPIO_DRDY_OFF_PORTE_PIN6    _PIN_OFF(GPIO_DRDY_PORTE_PIN6)
+#define GPIO_DRDY_OFF_PORTE_PIN5    _PIN_OFF(GPIO_DRDY_PORTE_PIN5)
+#define GPIO_DRDY_OFF_PORTE_PIN2    _PIN_OFF(GPIO_DRDY_PORTE_PIN2)
+
 /**
  * N.B we do not have control over the SPI 2 buss powered devices
  * so the the ms5611 is not resetable.
@@ -135,6 +150,7 @@
 #define PX4_SPI_BUS_SENSORS          1
 #define PX4_SPI_BUS_RAMTRON          2
 #define PX4_SPI_BUS_BARO             PX4_SPI_BUS_RAMTRON
+#define PX4_SPI_BUS_EXTERNAL              4
 
 /* Use these in place of the uint32_t enumeration to select a specific SPI device on SPI1 */
 #define PX4_SPIDEV_GYRO              PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 1)
@@ -157,6 +173,8 @@
  * PX4_MK_SPI_SEL  differentiate by adding in PX4_SPI_DEVICE_ID.
  */
 #define PX4_SPIDEV_BARO             PX4_MK_SPI_SEL(PX4_SPI_BUS_BARO, 3)
+
+#define PX4_SPIDEV_EXTERNAL             PX4_MK_SPI_SEL(PX4_SPI_BUS_EXTERNAL, 1)
 
 /* I2C busses. */
 #define PX4_I2C_BUS_EXPANSION        1

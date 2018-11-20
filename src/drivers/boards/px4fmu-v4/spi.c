@@ -97,6 +97,13 @@ __EXPORT void stm32_spiinitialize(int mask)
 
 #endif
 
+	if (mask & PX4_SPI_BUS_EXTERNAL) {
+
+		stm32_configgpio(GPIO_DRDY_PORTE_PIN6);
+		stm32_configgpio(GPIO_DRDY_PORTE_PIN5);
+		stm32_configgpio(GPIO_DRDY_PORTE_PIN2);
+	}
+
 }
 
 __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
@@ -180,6 +187,17 @@ __EXPORT uint8_t stm32_spi2status(FAR struct spi_dev_s *dev, uint32_t devid)
 }
 #endif
 
+__EXPORT void stm32_spi4select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
+{
+	/* SPI select is active low, so write !selected to select the device */
+	return;
+}
+
+__EXPORT uint8_t stm32_spi4status(FAR struct spi_dev_s *dev, uint32_t devid)
+{
+	return SPI_STATUS_PRESENT;
+}
+
 __EXPORT void board_spi_reset(int ms)
 {
 	/* disable SPI bus 1  DRDY */
@@ -212,6 +230,26 @@ __EXPORT void board_spi_reset(int ms)
 	stm32_gpiowrite(GPIO_SPI1_MISO_OFF, 0);
 	stm32_gpiowrite(GPIO_SPI1_MOSI_OFF, 0);
 
+	/* disable SPI bus 4  DRDY */
+
+	stm32_configgpio(GPIO_DRDY_OFF_PORTE_PIN6);
+	stm32_configgpio(GPIO_DRDY_OFF_PORTE_PIN5);
+	stm32_configgpio(GPIO_DRDY_OFF_PORTE_PIN2);
+
+	stm32_gpiowrite(GPIO_DRDY_OFF_PORTE_PIN6, 0);
+	stm32_gpiowrite(GPIO_DRDY_OFF_PORTE_PIN5, 0);
+	stm32_gpiowrite(GPIO_DRDY_OFF_PORTE_PIN2, 0);
+
+	/* disable SPI bus 4*/
+
+	stm32_configgpio(GPIO_SPI4_SCK_OFF);
+	stm32_configgpio(GPIO_SPI4_MISO_OFF);
+	stm32_configgpio(GPIO_SPI4_MOSI_OFF);
+
+	stm32_gpiowrite(GPIO_SPI4_SCK_OFF, 0);
+	stm32_gpiowrite(GPIO_SPI4_MISO_OFF, 0);
+	stm32_gpiowrite(GPIO_SPI4_MOSI_OFF, 0);
+
 
 	/* N.B we do not have control over the SPI 2 buss powered devices
 	 * so the the ms5611 is not resetable.
@@ -237,4 +275,9 @@ __EXPORT void board_spi_reset(int ms)
 	stm32_configgpio(GPIO_SPI1_SCK);
 	stm32_configgpio(GPIO_SPI1_MISO);
 	stm32_configgpio(GPIO_SPI1_MOSI);
+
+	stm32_spiinitialize(PX4_SPI_BUS_EXTERNAL);
+	stm32_configgpio(GPIO_SPI4_SCK);
+	stm32_configgpio(GPIO_SPI4_MISO);
+	stm32_configgpio(GPIO_SPI4_MOSI);
 }
