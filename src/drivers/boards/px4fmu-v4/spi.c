@@ -97,12 +97,14 @@ __EXPORT void stm32_spiinitialize(int mask)
 
 #endif
 
+#ifdef CONFIG_STM32_SPI4
+
 	if (mask & PX4_SPI_BUS_EXTERNAL) {
 
-		stm32_configgpio(GPIO_DRDY_PORTE_PIN6);
-		stm32_configgpio(GPIO_DRDY_PORTE_PIN5);
-		stm32_configgpio(GPIO_DRDY_PORTE_PIN2);
+		stm32_configgpio(GPIO_SPI4_CS_1); //add cs
 	}
+
+#endif
 
 }
 
@@ -190,6 +192,7 @@ __EXPORT uint8_t stm32_spi2status(FAR struct spi_dev_s *dev, uint32_t devid)
 __EXPORT void stm32_spi4select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
 	/* SPI select is active low, so write !selected to select the device */
+	stm32_gpiowrite(GPIO_SPI4_CS_1, !selected); // add cs
 	return;
 }
 
@@ -230,16 +233,6 @@ __EXPORT void board_spi_reset(int ms)
 	stm32_gpiowrite(GPIO_SPI1_MISO_OFF, 0);
 	stm32_gpiowrite(GPIO_SPI1_MOSI_OFF, 0);
 
-	/* disable SPI bus 4  DRDY */
-
-	stm32_configgpio(GPIO_DRDY_OFF_PORTE_PIN6);
-	stm32_configgpio(GPIO_DRDY_OFF_PORTE_PIN5);
-	stm32_configgpio(GPIO_DRDY_OFF_PORTE_PIN2);
-
-	stm32_gpiowrite(GPIO_DRDY_OFF_PORTE_PIN6, 0);
-	stm32_gpiowrite(GPIO_DRDY_OFF_PORTE_PIN5, 0);
-	stm32_gpiowrite(GPIO_DRDY_OFF_PORTE_PIN2, 0);
-
 	/* disable SPI bus 4*/
 
 	stm32_configgpio(GPIO_SPI4_SCK_OFF);
@@ -258,6 +251,8 @@ __EXPORT void board_spi_reset(int ms)
 
 	/* set the sensor rail off (default) */
 	stm32_configgpio(GPIO_VDD_3V3_SENSORS_EN);
+	/* set the periph rail off (default) */
+	stm32_configgpio(GPIO_PERIPH_3V3_EN);
 
 	/* wait for the sensor rail to reach GND */
 	usleep(ms * 1000);
@@ -267,6 +262,8 @@ __EXPORT void board_spi_reset(int ms)
 
 	/* switch the sensor rail back on */
 	stm32_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 1);
+	/* switch the periph rail back on */
+	stm32_gpiowrite(GPIO_PERIPH_3V3_EN, 1);
 
 	/* wait a bit before starting SPI, different times didn't influence results */
 	usleep(100);
