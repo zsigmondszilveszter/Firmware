@@ -2,8 +2,8 @@
 
 if [ -z ${PX4_DOCKER_REPO+x} ]; then
 	echo "guessing PX4_DOCKER_REPO based on input";
-	if [[ $@ =~ .*px4fmu.* ]]; then
-		# nuttx-px4fmu-v{1,2,3,4,5}
+	if [[ $@ =~ .*px4_fmu.* ]]; then
+		# nuttx-px4_fmu-v{1,2,3,4,5}
 		PX4_DOCKER_REPO="px4io/px4-dev-nuttx:2018-09-11"
 	elif [[ $@ =~ .*navio2.* ]] || [[ $@ =~ .*raspberry.* ]] || [[ $@ =~ .*bebop.* ]]; then
 		# posix_rpi_cross, posix_bebop_default
