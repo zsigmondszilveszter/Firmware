@@ -70,7 +70,7 @@
 
 #include <perf/perf_counter.h>
 #include <systemlib/err.h>
-#include <platforms/px4_getopt.h>
+#include <platform/px4_getopt.h>
 
 #include "mpl3115a2.h"
 

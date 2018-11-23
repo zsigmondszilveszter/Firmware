@@ -37,7 +37,7 @@ add_subdirectory(src)
 
 set(FW_NAME ${PX4_BOARD_VENDOR}_${PX4_BOARD_MODEL}_${PX4_BOARD_LABEL}.elf)
 
-add_executable(${FW_NAME} ${PX4_SOURCE_DIR}/src/platforms/empty.c)
+add_executable(${FW_NAME} ${PX4_SOURCE_DIR}/src/platform/empty.c)
 add_dependencies(${FW_NAME} git_nuttx nuttx_build)
 
 get_property(module_libraries GLOBAL PROPERTY PX4_MODULE_LIBRARIES)

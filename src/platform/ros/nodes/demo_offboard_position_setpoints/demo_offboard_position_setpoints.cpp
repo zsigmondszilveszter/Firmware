@@ -39,23 +39,19 @@
  * @author Thomas Gubler <thomasgubler@gmail.com>
 */
 
-#include "demo_offboard_attitude_setpoints.h"
+#include "demo_offboard_position_setpoints.h"
 
-#include <platforms/px4_middleware.h>
+#include <platform/px4_middleware.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <std_msgs/Float64.h>
-#include <math.h>
-#include <tf/transform_datatypes.h>
 
-DemoOffboardAttitudeSetpoints::DemoOffboardAttitudeSetpoints() :
+DemoOffboardPositionSetpoints::DemoOffboardPositionSetpoints() :
 	_n(),
-	_attitude_sp_pub(_n.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_attitude/attitude", 1)),
-	_thrust_sp_pub(_n.advertise<std_msgs::Float64>("mavros/setpoint_attitude/att_throttle", 1))
+	_local_position_sp_pub(_n.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 1))
 {
 }
 
 
-int DemoOffboardAttitudeSetpoints::main()
+int DemoOffboardPositionSetpoints::main()
 {
 	px4::Rate loop_rate(10);
 
@@ -63,18 +59,12 @@ int DemoOffboardAttitudeSetpoints::main()
 		loop_rate.sleep();
 		ros::spinOnce();
 
-		/* Publish example offboard attitude setpoint */
+		/* Publish example offboard position setpoint */
 		geometry_msgs::PoseStamped pose;
-		tf::Quaternion q = tf::createQuaternionFromRPY(0.0, 0.1 * (sinf(0.5 * (float)px4::get_time_micros() / 1000000.0f)),
-				   0.0);
-		quaternionTFToMsg(q, pose.pose.orientation);
-
-		_attitude_sp_pub.publish(pose);
-
-		std_msgs::Float64 thrust;
-		thrust.data = 0.4f + 0.25 * (sinf((float)px4::get_time_micros() /
-						  1000000.0f)); // just some example throttle input that makes the quad 'jump'
-		_thrust_sp_pub.publish(thrust);
+		pose.pose.position.x = 0;
+		pose.pose.position.y = 0;
+		pose.pose.position.z = 1;
+		_local_position_sp_pub.publish(pose);
 	}
 
 	return 0;
@@ -83,6 +73,6 @@ int DemoOffboardAttitudeSetpoints::main()
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "demo_offboard_position_setpoints");
-	DemoOffboardAttitudeSetpoints d;
+	DemoOffboardPositionSetpoints d;
 	return d.main();
 }

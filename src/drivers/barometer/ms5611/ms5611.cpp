@@ -65,7 +65,7 @@
 
 #include <perf/perf_counter.h>
 #include <systemlib/err.h>
-#include <platforms/px4_getopt.h>
+#include <platform/px4_getopt.h>
 
 #include "ms5611.h"
 

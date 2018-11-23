@@ -46,7 +46,7 @@
 #include <containers/List.hpp>
 #endif
 
-#include <platforms/px4_message.h>
+#include <platform/px4_message.h>
 
 namespace px4
 {

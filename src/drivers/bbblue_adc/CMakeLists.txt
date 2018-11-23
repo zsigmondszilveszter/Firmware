@@ -48,7 +48,5 @@ if ("${PX4_BOARD}" STREQUAL "bbblue")
 			#
 			# so include bbblue board specific code here:
 			../boards/bbblue/init.c
-		DEPENDS
-			platforms__common
 	)
 endif()

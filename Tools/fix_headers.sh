@@ -224,7 +224,7 @@ function include_path()
 	if [[ $1 =~ platforms/ ]]; then return 1; fi
 	# apps.h is generated from apps.h.in.
 	if [ $1 = "apps.h" ]; then return 1; fi
-	# Treat the following headers from src/platforms/*/include as system header because they replace what is found in nuttx (for posix and qurt).
+	# Treat the following headers from src/platform/*/include as system header because they replace what is found in nuttx (for posix and qurt).
 	if [ $1 = "arch/board/board.h" -o $1 = "crc32.h" -o $1 = "i2c.h" -o $1 = "queue.h" -o $1 = "poll.h" -o $1 = "sys/ioctl.h" ]; then return 2; fi
 	# Escape the path for reg.exp. matching.
 	PATH_RE=$(echo $1 | sed -e 's/\([+.]\)/\\\1/')

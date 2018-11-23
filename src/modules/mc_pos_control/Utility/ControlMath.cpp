@@ -37,7 +37,7 @@
  */
 
 #include "ControlMath.hpp"
-#include <platforms/px4_defines.h>
+#include <platform/px4_defines.h>
 #include <float.h>
 #include <mathlib/mathlib.h>
 

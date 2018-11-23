@@ -134,7 +134,7 @@ function(px4_add_module)
 
 	# all modules can potentially use parameters and uORB
 	add_dependencies(${MODULE} uorb_headers)
-	target_link_libraries(${MODULE} PRIVATE prebuild_targets parameters_interface platforms__common px4_layer systemlib)
+	target_link_libraries(${MODULE} PRIVATE prebuild_targets parameters_interface platform__common px4_layer systemlib)
 
 	set_property(GLOBAL APPEND PROPERTY PX4_MODULE_LIBRARIES ${MODULE})
 	set_property(GLOBAL APPEND PROPERTY PX4_MODULE_PATHS ${CMAKE_CURRENT_SOURCE_DIR})

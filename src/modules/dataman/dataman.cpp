@@ -56,7 +56,7 @@
 #include <string.h>
 #include <semaphore.h>
 #include <unistd.h>
-#include <platforms/px4_getopt.h>
+#include <platform/px4_getopt.h>
 #include <drivers/drv_hrt.h>
 
 #include "dataman.h"

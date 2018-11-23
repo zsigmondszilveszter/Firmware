@@ -175,7 +175,7 @@ function(px4_add_common_flags)
 		${PX4_SOURCE_DIR}/src/lib/DriverFramework/framework/include
 		${PX4_SOURCE_DIR}/src/lib/matrix
 		${PX4_SOURCE_DIR}/src/modules
-		${PX4_SOURCE_DIR}/src/platforms
+		${PX4_SOURCE_DIR}/src/platform
 		)
 
 	string(TOUPPER ${PX4_BOARD} board_upper)

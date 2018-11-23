@@ -40,7 +40,7 @@
 
 #include "manual_input.h"
 
-#include <platforms/px4_middleware.h>
+#include <platform/px4_middleware.h>
 
 ManualInput::ManualInput() :
 	_n(),

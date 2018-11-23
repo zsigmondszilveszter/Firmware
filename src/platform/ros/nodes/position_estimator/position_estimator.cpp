@@ -42,8 +42,8 @@
 
 #include <px4/vehicle_local_position.h>
 #include <mathlib/mathlib.h>
-#include <platforms/px4_defines.h>
-#include <platforms/px4_middleware.h>
+#include <platform/px4_defines.h>
+#include <platform/px4_middleware.h>
 #include <vector>
 #include <string>
 #include <gazebo_msgs/ModelStates.h>

@@ -39,7 +39,7 @@
 
 #pragma once
 
-#include <platforms/px4_defines.h>
+#include <platform/px4_defines.h>
 #include <float.h>
 
 //this should be defined in stdint.h, but seems to be missing in the ARM toolchain (5.2.0)

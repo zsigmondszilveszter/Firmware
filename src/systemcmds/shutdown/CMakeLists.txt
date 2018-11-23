@@ -34,10 +34,6 @@ px4_add_module(
 	MODULE systemcmds__shutdown
 	MAIN shutdown
 	STACK_MAIN 800
-	COMPILE_FLAGS
 	SRCS
 		shutdown.c
-	DEPENDS
-		platforms__common
 	)
-# vim: set noet ft=cmake fenc=utf-8 ff=unix :

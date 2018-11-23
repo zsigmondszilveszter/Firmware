@@ -40,7 +40,7 @@
 
 #include "commander.h"
 
-#include <platforms/px4_middleware.h>
+#include <platform/px4_middleware.h>
 
 Commander::Commander() :
 	_n(),

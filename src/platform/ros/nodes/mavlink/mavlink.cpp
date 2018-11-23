@@ -42,7 +42,7 @@
 
 #include "mavlink.h"
 
-#include <platforms/px4_middleware.h>
+#include <platform/px4_middleware.h>
 
 using namespace px4;
 
