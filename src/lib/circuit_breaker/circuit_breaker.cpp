@@ -46,6 +46,10 @@
 
 #include <stdint.h>
 #include <px4_defines.h>
+#include <lib/parameters/param.h>
+
+
+#define PX4_PARAM_GET_BYNAME(_name, _destpt) param_get(param_find(_name), _destpt)
 
 bool circuit_breaker_enabled(const char *breaker, int32_t magic)
 {

@@ -53,6 +53,7 @@
 #include <systemlib/err.h>
 #include <px4_defines.h>
 #include <px4_tasks.h>
+#include <lib/parameters/param.h>
 
 #include "input_mavlink.h"
 #include "input_rc.h"

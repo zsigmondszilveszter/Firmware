@@ -46,6 +46,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <px4_defines.h>
+#include <px4_log.h>
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_pwm_input.h>
 

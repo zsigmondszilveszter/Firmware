@@ -39,6 +39,7 @@
 
 #include "cdev_platform.hpp"
 
+#include <cstring>
 #include <string>
 #include <map>
 

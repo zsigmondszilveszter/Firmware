@@ -45,6 +45,7 @@
 #include <px4_defines.h>
 #include <px4_tasks.h>
 #include <px4_posix.h>
+#include <px4_log.h>
 
 #include <drivers/drv_hrt.h>
 #include <mathlib/mathlib.h>

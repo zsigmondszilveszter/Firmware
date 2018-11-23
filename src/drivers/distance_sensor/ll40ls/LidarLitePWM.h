@@ -49,7 +49,8 @@
 
 
 #include <drivers/device/ringbuffer.h>
-#include <perf/perf_counter.h>
+#include <lib/perf/perf_counter.h>
+#include <lib/parameters/param.h>
 
 #include <uORB/uORB.h>
 #include <uORB/topics/pwm_input.h>

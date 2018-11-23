@@ -44,8 +44,7 @@
 #include <nuttx/config.h>
 #include <nuttx/arch.h>
 #include "px4_micro_hal.h"
-#include <board_config.h>
 
-#elif defined (__PX4_POSIX)
-# include <board_config.h>
-#endif
+#endif /* __PX4_NUTTX */
+
+#include <board_config.h>

@@ -47,6 +47,7 @@
 #include <lib/ecl/geo/geo.h>
 #include <lib/ecl/l1/ecl_l1_pos_controller.h>
 #include <lib/mathlib/mathlib.h>
+#include <lib/parameters/param.h>
 #include <lib/perf/perf_counter.h>
 #include <lib/pid/pid.h>
 #include <px4_config.h>

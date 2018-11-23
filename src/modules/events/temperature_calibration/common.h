@@ -41,6 +41,7 @@
 #endif
 
 #include <px4_log.h>
+#include <lib/parameters/param.h>
 #include <mathlib/mathlib.h>
 
 #include "polyfit.hpp"

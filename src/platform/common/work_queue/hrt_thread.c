@@ -50,6 +50,7 @@
 #include <px4_workqueue.h>
 #include <drivers/drv_hrt.h>
 #include "hrt_work.h"
+#include <string.h>
 
 /****************************************************************************
  * Pre-processor Definitions

@@ -46,6 +46,7 @@
 #include <drivers/drv_hrt.h>
 #include <ecl/geo/geo.h>
 #include <lib/drivers/smbus/SMBus.hpp>
+#include <lib/parameters/param.h>
 #include <mathlib/mathlib.h>
 #include <px4_config.h>
 #include <px4_workqueue.h>

@@ -57,7 +57,8 @@
 #include <unistd.h>
 #include <termios.h>
 
-#include <perf/perf_counter.h>
+#include <lib/perf/perf_counter.h>
+#include <lib/parameters/param.h>
 
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_range_finder.h>

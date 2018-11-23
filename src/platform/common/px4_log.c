@@ -34,6 +34,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <assert.h>
+
 #include <px4_log.h>
 #if defined(__PX4_POSIX)
 #if !defined(__PX4_CYGWIN)
@@ -55,7 +58,7 @@ __EXPORT const char *__px4_log_level_color[_PX4_LOG_LEVEL_PANIC + 1] =
 
 void px4_log_initialize(void)
 {
-	ASSERT(orb_log_message_pub == NULL);
+	assert(orb_log_message_pub == NULL);
 
 	/* we need to advertise with a valid message */
 	struct log_message_s log_message;
