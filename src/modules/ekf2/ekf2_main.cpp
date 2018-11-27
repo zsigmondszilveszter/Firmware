@@ -57,6 +57,7 @@
 #include <uORB/topics/ekf2_timestamps.h>
 #include <uORB/topics/ekf_gps_position.h>
 #include <uORB/topics/estimator_status.h>
+#include <uORB/topics/estimator_status_flags.h>
 #include <uORB/topics/ekf_gps_drift.h>
 #include <uORB/topics/landing_target_pose.h>
 #include <uORB/topics/optical_flow.h>
@@ -125,6 +126,9 @@ private:
 	bool update_mag_decl(Param &mag_decl_param);
 	bool publish_attitude(const sensor_combined_s &sensors, const hrt_abstime &now);
 	bool publish_wind_estimate(const hrt_abstime &timestamp);
+
+	bool publish_status_flags(const hrt_abstime &now);
+
 
 	const Vector3f get_vel_body_wind();
 
@@ -203,9 +207,6 @@ private:
 	bool _mag_decl_saved = false;	///< true when the magnetic declination has been saved
 
 	// Used to filter velocity innovations during pre-flight checks
-	bool _preflt_horiz_fail = false;	///< true if preflight horizontal innovation checks are failed
-	bool _preflt_vert_fail = false;		///< true if preflight vertical innovation checks are failed
-	bool _preflt_fail = false;		///< true if any preflight innovation checks are failed
 	Vector2f _vel_ne_innov_lpf = {};	///< Preflight low pass filtered NE axis velocity innovations (m/sec)
 	float _vel_d_innov_lpf = {};		///< Preflight low pass filtered D axis velocity innovations (m/sec)
 	float _hgt_innov_lpf = 0.0f;		///< Preflight low pass filtered height innovation (m)
@@ -281,8 +282,9 @@ private:
 	orb_advert_t _sensor_bias_pub{nullptr};
 	orb_advert_t _blended_gps_pub{nullptr};
 
-	uORB::Publication<vehicle_local_position_s> _vehicle_local_position_pub;
-	uORB::Publication<vehicle_global_position_s> _vehicle_global_position_pub;
+	uORB::Publication<vehicle_local_position_s> _vehicle_local_position_pub{ORB_ID(vehicle_local_position)};
+	uORB::Publication<vehicle_global_position_s> _vehicle_global_position_pub{ORB_ID(vehicle_global_position)};
+	uORB::Publication<estimator_status_flags_s> _estimator_status_flags_pub{ORB_ID(estimator_status_flags)};
 
 	Ekf _ekf;
 
@@ -507,8 +509,6 @@ Ekf2::Ekf2():
 	ModuleParams(nullptr),
 	_perf_update_data(perf_alloc_once(PC_ELAPSED, "EKF2 data acquisition")),
 	_perf_ekf_update(perf_alloc_once(PC_ELAPSED, "EKF2 update")),
-	_vehicle_local_position_pub(ORB_ID(vehicle_local_position)),
-	_vehicle_global_position_pub(ORB_ID(vehicle_global_position)),
 	_params(_ekf.getParamHandle()),
 	_obs_dt_min_ms(_params->sensor_interval_min_ms),
 	_mag_delay_ms(_params->mag_delay_ms),
@@ -1289,11 +1289,12 @@ void Ekf2::run()
 
 		if (updated) {
 
-			filter_control_status_u control_status;
-			_ekf.get_control_mode(&control_status.value);
+			estimator_status_flags_s &flags = _estimator_status_flags_pub.get();
+
+			estimator::filter_control_status control_status{};
 
 			// only publish position after successful alignment
-			if (control_status.flags.tilt_align) {
+			if (control_status.tilt_align) {
 				// generate vehicle local position data
 				vehicle_local_position_s &lpos = _vehicle_local_position_pub.get();
 
@@ -1326,10 +1327,10 @@ void Ekf2::run()
 				lpos.az = vel_deriv[2];
 
 				// TODO: better status reporting
-				lpos.xy_valid = _ekf.local_position_is_valid() && !_preflt_horiz_fail;
-				lpos.z_valid = !_preflt_vert_fail;
-				lpos.v_xy_valid = _ekf.local_position_is_valid() && !_preflt_horiz_fail;
-				lpos.v_z_valid = !_preflt_vert_fail;
+				lpos.xy_valid = _ekf.local_position_is_valid() && !flags.pre_flight_horizontal_failure;
+				lpos.z_valid = !flags.pre_flight_vertical_failure;
+				lpos.v_xy_valid = _ekf.local_position_is_valid() && !flags.pre_flight_horizontal_failure;
+				lpos.v_z_valid = !flags.pre_flight_vertical_failure;
 
 				// Position of local NED origin in GPS / WGS84 frame
 				map_projection_reference_s ekf_origin;
@@ -1397,7 +1398,7 @@ void Ekf2::run()
 				// publish vehicle local position data
 				_vehicle_local_position_pub.update();
 
-				if (_ekf.global_position_is_valid() && !_preflt_fail) {
+				if (_ekf.global_position_is_valid() && !(flags.pre_flight_horizontal_failure || flags.pre_flight_vertical_failure)) {
 					// generate and publish global position data
 					vehicle_global_position_s &global_pos = _vehicle_global_position_pub.get();
 
@@ -1480,25 +1481,22 @@ void Ekf2::run()
 			_ekf.get_state_delayed(status.states);
 			status.n_states = 24;
 			_ekf.get_covariances(status.covariances);
-			_ekf.get_gps_check_status(&status.gps_check_fail_flags);
+
 			// only report enabled GPS check failures (the param indexes are shifted by 1 bit, because they don't include
 			// the GPS Fix bit, which is always checked)
-			status.gps_check_fail_flags &= ((uint16_t)_params->gps_check_mask << 1) | 1;
-			status.control_mode_flags = control_status.value;
-			_ekf.get_filter_fault_status(&status.filter_fault_flags);
-			_ekf.get_innovation_test_status(&status.innovation_check_flags, &status.mag_test_ratio,
+			//status.gps_check_fail_flags &= ((uint16_t)_params->gps_check_mask << 1) | 1;
+
+			_ekf.get_innovation_test_status(&status.mag_test_ratio,
 							&status.vel_test_ratio, &status.pos_test_ratio,
 							&status.hgt_test_ratio, &status.tas_test_ratio,
 							&status.hagl_test_ratio, &status.beta_test_ratio);
 
 			status.pos_horiz_accuracy = _vehicle_local_position_pub.get().eph;
 			status.pos_vert_accuracy = _vehicle_local_position_pub.get().epv;
-			_ekf.get_ekf_soln_status(&status.solution_status_flags);
 			_ekf.get_imu_vibe_metrics(status.vibe);
 			status.time_slip = _last_time_slip_us / 1e6f;
 			status.health_flags = 0.0f; // unused
 			status.timeout_flags = 0.0f; // unused
-			status.pre_flt_fail = _preflt_fail;
 
 			if (_estimator_status_pub == nullptr) {
 				_estimator_status_pub = orb_advertise(ORB_ID(estimator_status), &status);
@@ -1533,8 +1531,9 @@ void Ekf2::run()
 				// Check if conditions are OK for learning of magnetometer bias values
 				if (!vehicle_land_detected.landed && // not on ground
 				    (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) && // vehicle is armed
-				    !status.filter_fault_flags && // there are no filter faults
-				    control_status.flags.mag_3D) { // the EKF is operating in the correct mode
+				    (!flags.status_mag_fault && !flags.bad_mag_x && !flags.bad_mag_y && !flags.bad_mag_z && !flags.bad_mag_decl)
+				    && // there are no filter faults
+				    control_status.mag_3D) { // the EKF is operating in the correct mode
 
 					if (_last_magcal_us == 0) {
 						_last_magcal_us = now;
@@ -1544,7 +1543,7 @@ void Ekf2::run()
 						_last_magcal_us = now;
 					}
 
-				} else if (status.filter_fault_flags != 0) {
+				} else if (flags.status_mag_fault || flags.bad_mag_x || flags.bad_mag_y || flags.bad_mag_z || flags.bad_mag_decl) {
 					// if a filter fault has occurred, assume previous learning was invalid and do not
 					// count it towards total learning time.
 					_total_cal_time_us = 0;
@@ -1583,7 +1582,8 @@ void Ekf2::run()
 
 				// Check and save the last valid calibration when we are disarmed
 				if ((vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY)
-				    && (status.filter_fault_flags == 0)
+				    && (!flags.status_mag_fault && !flags.bad_mag_x && !flags.bad_mag_y && !flags.bad_mag_z
+					&& !flags.bad_mag_decl) // there are no filter faults
 				    && (sensor_selection.mag_device_id == (uint32_t)_mag_bias_id.get())) {
 
 					update_mag_bias(_mag_bias_x, 0);
@@ -1597,6 +1597,8 @@ void Ekf2::run()
 			}
 
 			publish_wind_estimate(now);
+
+			publish_status_flags(now);
 
 			if (!_mag_decl_saved && (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY)) {
 				_mag_decl_saved = update_mag_decl(_mag_declination_deg);
@@ -1643,7 +1645,7 @@ void Ekf2::run()
 
 					// set the max allowed yaw innovaton depending on whether we are not aiding navigation using
 					// observations in the NE reference frame.
-					bool doing_ne_aiding = control_status.flags.gps ||  control_status.flags.ev_pos;
+					bool doing_ne_aiding = control_status.gps || control_status.ev_pos;
 
 					float yaw_test_limit;
 
@@ -1668,25 +1670,21 @@ void Ekf2::run()
 					// check the yaw and horizontal velocity innovations
 					float vel_ne_innov_length = sqrtf(innovations.vel_pos_innov[0] * innovations.vel_pos_innov[0] +
 									  innovations.vel_pos_innov[1] * innovations.vel_pos_innov[1]);
-					_preflt_horiz_fail = (_vel_ne_innov_lpf.norm() > _vel_innov_test_lim)
-							     || (vel_ne_innov_length > 2.0f * _vel_innov_test_lim)
-							     || (_yaw_innov_magnitude_lpf > yaw_test_limit);
+					flags.pre_flight_horizontal_failure = (_vel_ne_innov_lpf.norm() > _vel_innov_test_lim)
+									      || (vel_ne_innov_length > 2.0f * _vel_innov_test_lim)
+									      || (_yaw_innov_magnitude_lpf > yaw_test_limit);
 
 					// check the vertical velocity and position innovations
-					_preflt_vert_fail = (fabsf(_vel_d_innov_lpf) > _vel_innov_test_lim)
-							    || (fabsf(innovations.vel_pos_innov[2]) > 2.0f * _vel_innov_test_lim)
-							    || (fabsf(_hgt_innov_lpf) > _hgt_innov_test_lim);
-
-					// master pass-fail status
-					_preflt_fail = _preflt_horiz_fail || _preflt_vert_fail;
+					flags.pre_flight_vertical_failure = (fabsf(_vel_d_innov_lpf) > _vel_innov_test_lim)
+									    || (fabsf(innovations.vel_pos_innov[2]) > 2.0f * _vel_innov_test_lim)
+									    || (fabsf(_hgt_innov_lpf) > _hgt_innov_test_lim);
 
 				} else {
 					_vel_ne_innov_lpf.zero();
 					_vel_d_innov_lpf = 0.0f;
 					_hgt_innov_lpf = 0.0f;
-					_preflt_horiz_fail = false;
-					_preflt_vert_fail = false;
-					_preflt_fail = false;
+					flags.pre_flight_horizontal_failure = false;
+					flags.pre_flight_vertical_failure = false;
 				}
 
 				if (_estimator_innovations_pub == nullptr) {
@@ -1790,6 +1788,88 @@ bool Ekf2::publish_wind_estimate(const hrt_abstime &timestamp)
 	}
 
 	return false;
+}
+
+bool Ekf2::publish_status_flags(const hrt_abstime &now)
+{
+	estimator_status_flags_s status_flags{};
+	status_flags.timestamp = now;
+
+
+	const estimator::filter_control_status &control_status = _ekf.get_control_mode();
+
+	status_flags.status_tilt_align = control_status.tilt_align;
+	status_flags.status_yaw_align = control_status.yaw_align;
+	status_flags.status_gps = control_status.gps;
+	status_flags.status_opt_flow = control_status.opt_flow;
+	status_flags.status_mag_hdg = control_status.mag_hdg;
+	status_flags.status_mag_3d = control_status.mag_3D;
+	status_flags.status_mag_dec = control_status.mag_dec;
+	status_flags.status_in_air = control_status.in_air;
+	status_flags.status_wind = control_status.wind;
+	status_flags.status_baro_hgt = control_status.baro_hgt;
+	status_flags.status_rng_hgt = control_status.rng_hgt;
+	status_flags.status_gps_hgt = control_status.gps_hgt;
+	status_flags.status_ev_pos = control_status.ev_pos;
+	status_flags.status_ev_yaw = control_status.ev_yaw;
+	status_flags.status_ev_hgt = control_status.ev_hgt;
+	status_flags.status_fuse_beta = control_status.fuse_beta;
+	status_flags.status_update_mag_states_only = control_status.update_mag_states_only;
+	status_flags.status_fixed_wing = control_status.fixed_wing;
+	status_flags.status_mag_fault = control_status.mag_fault;
+	status_flags.status_fuse_aspd = control_status.fuse_aspd;
+	status_flags.status_gnd_effect = control_status.gnd_effect;
+	status_flags.status_rng_stuck = control_status.rng_stuck;
+	status_flags.status_gps_yaw = control_status.gps_yaw;
+
+
+	const estimator::innovation_fault_status &innovation_fault_status = _ekf.get_innovation_fault_status();
+	status_flags.reject_vel_ned = innovation_fault_status.reject_vel_NED;
+	status_flags.reject_pos_ne = innovation_fault_status.reject_pos_NE;
+	status_flags.reject_pos_d = innovation_fault_status.reject_pos_D;
+	status_flags.reject_mag_x = innovation_fault_status.reject_mag_x;
+	status_flags.reject_mag_y = innovation_fault_status.reject_mag_y;
+	status_flags.reject_mag_z = innovation_fault_status.reject_mag_z;
+	status_flags.reject_yaw = innovation_fault_status.reject_yaw;
+	status_flags.reject_airspeed = innovation_fault_status.reject_airspeed;
+	status_flags.reject_sideslip = innovation_fault_status.reject_sideslip;
+	status_flags.reject_hagl = innovation_fault_status.reject_hagl;
+	status_flags.reject_optflow_x = innovation_fault_status.reject_optflow_X;
+	status_flags.reject_optflow_y = innovation_fault_status.reject_optflow_Y;
+
+	const estimator::fault_status &fault_status = _ekf.get_filter_fault_status();
+	status_flags.bad_mag_x = fault_status.bad_mag_x;
+	status_flags.bad_mag_y = fault_status.bad_mag_y;
+	status_flags.bad_mag_z = fault_status.bad_mag_z;
+	status_flags.bad_hdg = fault_status.bad_hdg;
+	status_flags.bad_mag_decl = fault_status.bad_mag_decl;
+	status_flags.bad_airspeed = fault_status.bad_airspeed;
+	status_flags.bad_sideslip = fault_status.bad_sideslip;
+	status_flags.bad_optflow_x = fault_status.bad_optflow_X;
+	status_flags.bad_optflow_y = fault_status.bad_optflow_Y;
+	status_flags.bad_vel_n = fault_status.bad_vel_N;
+	status_flags.bad_vel_e = fault_status.bad_vel_E;
+	status_flags.bad_vel_d = fault_status.bad_vel_D;
+	status_flags.bad_pos_n = fault_status.bad_pos_N;
+	status_flags.bad_pos_e = fault_status.bad_pos_E;
+	status_flags.bad_pos_d = fault_status.bad_pos_D;
+	status_flags.bad_acc_bias = fault_status.bad_acc_bias;
+
+	const gps_check_fail_status &gps_status = _ekf.get_gps_check_status();
+	status_flags.gps_check_fail_gps_fix = gps_status.fix;
+	status_flags.gps_check_fail_min_sat_count = gps_status.nsats;
+	status_flags.gps_check_fail_min_gdop = gps_status.gdop;
+	status_flags.gps_check_fail_max_horz_err = gps_status.hacc;
+	status_flags.gps_check_fail_max_vert_err = gps_status.vacc;
+	status_flags.gps_check_fail_max_spd_err = gps_status.sacc;
+	status_flags.gps_check_fail_max_horz_drift = gps_status.hdrift;
+	status_flags.gps_check_fail_max_vert_drift = gps_status.vdrift;
+	status_flags.gps_check_fail_max_horz_spd_err = gps_status.hspeed;
+	status_flags.gps_check_fail_max_vert_spd_err = gps_status.vspeed;
+
+	_estimator_status_flags_pub.update(status_flags);
+
+	return true;
 }
 
 const Vector3f Ekf2::get_vel_body_wind()

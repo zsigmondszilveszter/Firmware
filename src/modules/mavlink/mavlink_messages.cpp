@@ -2538,7 +2538,35 @@ protected:
 			est_msg.tas_ratio = est.tas_test_ratio;
 			est_msg.pos_horiz_accuracy = est.pos_horiz_accuracy;
 			est_msg.pos_vert_accuracy = est.pos_vert_accuracy;
-			est_msg.flags = est.solution_status_flags;
+
+
+
+
+//			est_msg.flags = est.solution_status_flags;
+//
+//
+//			ekf_solution_status soln_status;
+//
+//			const uint32 flags = est.control_mode_flags;
+//
+//			soln_status.flags.attitude = flags.tilt_align && flags.yaw_align && (_fault_status.value == 0);
+//			soln_status.flags.velocity_horiz = (flags.gps || flags.ev_pos || flags.opt_flow || (flags.fuse_beta && flags.fuse_aspd)) && (_fault_status.value == 0);
+//			soln_status.flags.velocity_vert = (flags.baro_hgt || flags.ev_hgt || flags.gps_hgt || flags.rng_hgt) && (_fault_status.value == 0);
+//			soln_status.flags.pos_horiz_rel = (flags.gps || flags.ev_pos || flags.opt_flow) && (_fault_status.value == 0);
+//			soln_status.flags.pos_horiz_abs = (flags.gps || flags.ev_pos) && (_fault_status.value == 0);
+//			soln_status.flags.pos_vert_abs = soln_status.flags.velocity_vert;
+//			soln_status.flags.pos_vert_agl = get_terrain_valid();
+//			soln_status.flags.const_pos_mode = !soln_status.flags.velocity_horiz;
+//			//soln_status.flags.pred_pos_horiz_rel = soln_status.flags.pos_horiz_rel;
+//			//soln_status.flags.pred_pos_horiz_abs = soln_status.flags.pos_horiz_abs;
+//
+//			//bool gps_vel_innov_bad = (_vel_pos_test_ratio[0] > 1.0f) || (_vel_pos_test_ratio[1] > 1.0f);
+//			//bool gps_pos_innov_bad = (_vel_pos_test_ratio[3] > 1.0f) || (_vel_pos_test_ratio[4] > 1.0f);
+//			//bool mag_innov_good = (_mag_test_ratio[0] < 1.0f) && (_mag_test_ratio[1] < 1.0f) && (_mag_test_ratio[2] < 1.0f) && (_yaw_test_ratio < 1.0f);
+//
+//			//soln_status.flags.gps_glitch = (gps_vel_innov_bad || gps_pos_innov_bad) && mag_innov_good;
+//			//soln_status.flags.accel_error = _bad_vert_accel_detected;
+
 			mavlink_msg_estimator_status_send_struct(_mavlink->get_channel(), &est_msg);
 
 			// VIBRATION

@@ -50,6 +50,7 @@
 #include <uORB/topics/airspeed.h>
 #include <uORB/topics/differential_pressure.h>
 #include <uORB/topics/estimator_status.h>
+#include <uORB/topics/estimator_status_flags.h>
 #include <uORB/topics/sensor_accel.h>
 #include <uORB/topics/sensor_baro.h>
 #include <uORB/topics/sensor_gyro.h>
@@ -496,8 +497,7 @@ static bool powerCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &status, 
 	return success;
 }
 
-static bool ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &vehicle_status, bool optional, bool report_fail,
-		      bool enforce_gps_required)
+static bool ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &vehicle_status, bool optional, bool report_fail, bool enforce_gps_required)
 {
 	bool success = true; // start with a pass and change to a fail if any test fails
 	bool present = true;
@@ -507,18 +507,25 @@ static bool ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &vehicle_s
 	bool gps_present = true;
 
 	// Get estimator status data if available and exit with a fail recorded if not
-	int sub = orb_subscribe(ORB_ID(estimator_status));
-	estimator_status_s status;
+	uORB::Subscription<estimator_status_s> est_status{ORB_ID(estimator_status)};
+	const estimator_status_s& status = est_status.get();
 
-	if (orb_copy(ORB_ID(estimator_status), sub, &status) != PX4_OK) {
-		present = false;
+	uORB::Subscription<estimator_status_flags_s> est_status_flags{ORB_ID(estimator_status_flags)};
+	const estimator_status_flags_s& flags = est_status_flags.get();
+
+	// Check if preflight check performed by estimator has failed
+	if (flags.pre_flight_horizontal_failure) {
+		if (report_fail) {
+			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Horizontal position unknown");
+		}
+
+		success = false;
 		goto out;
 	}
 
-	// Check if preflight check performed by estimator has failed
-	if (status.pre_flt_fail) {
+	if (flags.pre_flight_vertical_failure) {
 		if (report_fail) {
-			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Position unknown");
+			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Vertical position unknown");
 		}
 
 		success = false;
@@ -601,67 +608,61 @@ static bool ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &vehicle_s
 
 	// If GPS aiding is required, declare fault condition if the required GPS quality checks are failing
 	if (enforce_gps_required || report_fail) {
-		const bool ekf_gps_fusion = status.control_mode_flags & (1 << estimator_status_s::CS_GPS);
-		const bool ekf_gps_check_fail = status.gps_check_fail_flags > 0;
 
-		gps_success = ekf_gps_fusion; // default to success if gps data is fused
+		gps_success = flags.status_gps; // default to success if gps data is fused
 
-		if (ekf_gps_check_fail) {
-			if (report_fail) {
-				// Only report the first failure to avoid spamming
-				const char *message = nullptr;
-				if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_GPS_FIX)) {
-					message = "Preflight%s: GPS fix too low";
-				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MIN_SAT_COUNT)) {
-					message = "Preflight%s: not enough GPS Satellites";
-				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MIN_GDOP)) {
-					message = "Preflight%s: GPS GDoP too low";
-				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_HORZ_ERR)) {
-					message = "Preflight%s: GPS Horizontal Pos Error too high";
-				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_VERT_ERR)) {
-					message = "Preflight%s: GPS Vertical Pos Error too high";
-				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_SPD_ERR)) {
-					message = "Preflight%s: GPS Speed Accuracy too low";
-				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_HORZ_DRIFT)) {
-					message = "Preflight%s: GPS Horizontal Pos Drift too high";
-				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_VERT_DRIFT)) {
-					message = "Preflight%s: GPS Vertical Pos Drift too high";
-				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_HORZ_SPD_ERR)) {
-					message = "Preflight%s: GPS Hor Speed Drift too high";
-				} else if (status.gps_check_fail_flags & (1 << estimator_status_s::GPS_CHECK_FAIL_MAX_VERT_SPD_ERR)) {
-					message = "Preflight%s: GPS Vert Speed Drift too high";
+		if (report_fail) {
+			// Only report the first failure to avoid spamming
+			const char *message = nullptr;
+			if (flags.gps_check_fail_gps_fix) {
+				message = "Preflight%s: GPS fix too low";
+			} else if (flags.gps_check_fail_min_sat_count) {
+				message = "Preflight%s: not enough GPS Satellites";
+			} else if (flags.gps_check_fail_min_gdop) {
+				message = "Preflight%s: GPS GDoP too low";
+			} else if (flags.gps_check_fail_max_horz_err) {
+				message = "Preflight%s: GPS Horizontal Pos Error too high";
+			} else if (flags.gps_check_fail_max_vert_err) {
+				message = "Preflight%s: GPS Vertical Pos Error too high";
+			} else if (flags.gps_check_fail_max_spd_err) {
+				message = "Preflight%s: GPS Speed Accuracy too low";
+			} else if (flags.gps_check_fail_max_horz_drift) {
+				message = "Preflight%s: GPS Horizontal Pos Drift too high";
+			} else if (flags.gps_check_fail_max_vert_drift) {
+				message = "Preflight%s: GPS Vertical Pos Drift too high";
+			} else if (flags.gps_check_fail_max_horz_spd_err) {
+				message = "Preflight%s: GPS Hor Speed Drift too high";
+			} else if (flags.gps_check_fail_max_vert_spd_err) {
+				message = "Preflight%s: GPS Vert Speed Drift too high";
+			} else {
+				if (!flags.status_gps) {
+					// Likely cause unknown
+					message = "Preflight%s: Estimator not using GPS";
+					gps_present = false;
 				} else {
-					if (!ekf_gps_fusion) {
-						// Likely cause unknown
-						message = "Preflight%s: Estimator not using GPS";
-						gps_present = false;
-					} else {
-						// if we land here there was a new flag added and the code not updated. Show a generic message.
-						message = "Preflight%s: Poor GPS Quality";
-					}
-				}
-				if (message) {
-					if (enforce_gps_required) {
-						mavlink_log_critical(mavlink_log_pub, message, " Fail");
-					} else {
-						mavlink_log_warning(mavlink_log_pub, message, "");
-					}
+					// if we land here there was a new flag added and the code not updated. Show a generic message.
+					message = "Preflight%s: Poor GPS Quality";
 				}
 			}
-			gps_success = false;
+			if (message) {
+				if (enforce_gps_required) {
+					mavlink_log_critical(mavlink_log_pub, message, " Fail");
+				} else {
+					mavlink_log_warning(mavlink_log_pub, message, "");
+				}
+			}
+		}
+		gps_success = false;
 
-			if (enforce_gps_required) {
-				success = false;
-				goto out;
-			}
+		if (enforce_gps_required) {
+			success = false;
+			goto out;
 		}
 	}
 
 out:
 	set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_AHRS, present, !optional, success && present, vehicle_status);
 	set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_GPS, gps_present, enforce_gps_required, gps_success, vehicle_status);
-
-	orb_unsubscribe(sub);
 
 	return success;
 }

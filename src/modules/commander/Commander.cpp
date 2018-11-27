@@ -4027,12 +4027,11 @@ void Commander::estimator_check(bool *status_changed)
 
 	if (_estimator_status_sub.update()) {
 		const estimator_status_s& estimator_status = _estimator_status_sub.get();
+		const estimator_status_flags_s& est_flags = _estimator_status_flags_sub.get();
 
 		// Set the allowable position uncertainty based on combination of flight and estimator state
 		// When we are in a operator demanded position control mode and are solely reliant on optical flow, do not check position error because it will gradually increase throughout flight and the operator will compensate for the drift
-		const bool reliant_on_opt_flow = ((estimator_status.control_mode_flags & (1 << estimator_status_s::CS_OPT_FLOW))
-					    && !(estimator_status.control_mode_flags & (1 << estimator_status_s::CS_GPS))
-					    && !(estimator_status.control_mode_flags & (1 << estimator_status_s::CS_EV_POS)));
+		const bool reliant_on_opt_flow = (est_flags.status_opt_flow && !est_flags.status_gps && !est_flags.status_ev_pos);
 
 		const bool operator_controlled_position = (internal_state.main_state == commander_state_s::MAIN_STATE_POSCTL);
 

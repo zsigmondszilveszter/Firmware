@@ -55,6 +55,7 @@
 // subscriptions
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/estimator_status.h>
+#include <uORB/topics/estimator_status_flags.h>
 #include <uORB/topics/geofence_result.h>
 #include <uORB/topics/iridiumsbd_status.h>
 #include <uORB/topics/mission_result.h>
@@ -192,6 +193,7 @@ private:
 
 	// Subscriptions
 	Subscription<estimator_status_s>		_estimator_status_sub{ORB_ID(estimator_status)};
+	Subscription<estimator_status_flags_s>		_estimator_status_flags_sub{ORB_ID(estimator_status_flags)};
 	Subscription<iridiumsbd_status_s> 		_iridiumsbd_status_sub{ORB_ID(iridiumsbd_status)};
 	Subscription<mission_result_s>			_mission_result_sub{ORB_ID(mission_result)};
 	Subscription<vehicle_global_position_s>		_global_position_sub{ORB_ID(vehicle_global_position)};
