@@ -39,8 +39,13 @@
 
 #pragma once
 
-#include <platforms/px4_defines.h>
 #include <float.h>
+#include <math.h>
+#include <stdint.h>
+
+#ifndef M_PI
+#define M_PI		3.141592653589793238462643383280
+#endif
 
 //this should be defined in stdint.h, but seems to be missing in the ARM toolchain (5.2.0)
 #ifndef UINT64_C
