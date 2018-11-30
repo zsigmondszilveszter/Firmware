@@ -190,6 +190,3 @@ param set TEL_FRSKY_CONFIG 500
 param set SENS_EN_PGA460 1
 param set SENS_EN_THERMAL 1
 param set SENS_EN_BATT 1
-
-mpu9250 -s -R 14 start
-mpu9250 -t -R 14 start

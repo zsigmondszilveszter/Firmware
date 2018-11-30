@@ -255,7 +255,13 @@ then
 	fi
 fi
 
-if ver hwcmp PX4_FMU_V4
+if param compare SYS_AUTOSTART 4250
+then
+	mpu9250 -s -R 14 start
+	mpu9250 -t -R 14 start
+fi
+
+if ver hwcmp PX4FMU_V4
 then
 	# External I2C bus
 	hmc5883 -C -T -X start
