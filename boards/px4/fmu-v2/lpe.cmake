@@ -25,7 +25,6 @@ px4_add_board(
 		#blinkm
 		camera_trigger
 		#differential_pressure # all available differential pressure drivers
-		#differential_pressure/ms4525
 		distance_sensor # all available distance sensor drivers
 		gps
 		#heater
@@ -35,7 +34,6 @@ px4_add_board(
 		imu/lsm303d
 		imu/mpu6000
 		#imu/mpu9250
-		#iridiumsbd
 		irlock
 		#magnetometer # all available magnetometer drivers
 		magnetometer/hmc5883

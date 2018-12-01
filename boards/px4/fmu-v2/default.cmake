@@ -37,7 +37,6 @@ px4_add_board(
 		imu/lsm303d
 		imu/mpu6000
 		imu/mpu9250
-		#iridiumsbd
 		#irlock
 		#magnetometer # all available magnetometer drivers
 		magnetometer/hmc5883
