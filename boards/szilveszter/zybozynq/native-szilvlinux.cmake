@@ -40,8 +40,8 @@ px4_add_board(
 		linux_sbus
 
 	DF_DRIVERS # NOTE: DriverFramework is migrating to intree PX4 drivers
+		lsm6ds33
 		bmp180
-		# bmp280
 
 	MODULES
 		commander
@@ -52,7 +52,12 @@ px4_add_board(
 		navigator
 		sensors
 
+	SYSTEMCMDS
+		topic_listener
+
 	EXAMPLES
 		szilveszter
 		px4_simple_app
+		accel_test
+		gyro_test
 )

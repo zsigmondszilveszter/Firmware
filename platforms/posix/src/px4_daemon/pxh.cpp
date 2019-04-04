@@ -148,7 +148,8 @@ void Pxh::run_pxh()
 
 		switch (c) {
 		case EOF:
-			_should_exit = true;
+			// Szilveszter commented out, because SIGINFO triggers this condition and the program terminates 
+			// _should_exit = true;
 			break;
 
 		case 127:	// backslash

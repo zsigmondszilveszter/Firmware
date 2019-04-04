@@ -65,3 +65,5 @@ posix-configs/SITL/init/test/*_generated
 .coverage
 .coverage.*
 .vscode/ftp-sync.json
+
+.vscode/ipch
