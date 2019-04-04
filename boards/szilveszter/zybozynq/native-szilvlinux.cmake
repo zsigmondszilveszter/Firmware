@@ -56,8 +56,7 @@ px4_add_board(
 		topic_listener
 
 	EXAMPLES
-		szilveszter
-		px4_simple_app
 		accel_test
 		gyro_test
+		baro_test
 )

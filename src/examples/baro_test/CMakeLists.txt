@@ -32,10 +32,10 @@
 ############################################################################
 
 px4_add_module(
-    MODULE examples__szilveszter
-    MAIN szilveszter
+    MODULE examples__baro_test
+    MAIN baro_test
     STACK_MAIN 2000
     SRCS
-        szilveszter.cpp
+        baro_test.cpp
     DEPENDS
 )

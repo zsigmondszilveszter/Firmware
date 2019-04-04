@@ -32,10 +32,10 @@
  ****************************************************************************/
 
 /**
- * @file px4_simple_app.c
- * Minimal application example for PX4 autopilot
+ * @file baro_test.c
+ * Barometer tester application for PX4 autopilot
  *
- * @author Szilveszter Zsigmond <mail@example.com>
+ * @author Szilveszter Zsigmond <zsigmondszilveszter@yahoo.com>
  */
 
 #include <px4_log.h>
@@ -53,12 +53,10 @@
 #include <uORB/topics/sensor_baro.h>
 #include <uORB/topics/vehicle_attitude.h>
 
-extern "C" __EXPORT int szilveszter_main(int argc, char *argv[]);
+extern "C" __EXPORT int baro_test_main(int argc, char *argv[]);
 
-int szilveszter_main(int argc, char *argv[])
+int baro_test_main(int argc, char *argv[])
 {
-    PX4_INFO("BATMAN YEAH, Szilv Example!");
-
     /* subscribe to sensor_combined topic */
     int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_baro));
     /* limit the update rate to 5 Hz */
@@ -75,7 +73,7 @@ int szilveszter_main(int argc, char *argv[])
 
     int error_counter = 0;
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 20; i++) {
         /* wait for sensor update of 1 file descriptor for 1000 ms (1 second) */
         int poll_ret = px4_poll(fds, 1, 1000);
 
