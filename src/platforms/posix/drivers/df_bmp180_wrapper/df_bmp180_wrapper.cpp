@@ -35,7 +35,7 @@
  * @file df_bmp180_wrapper.cpp
  * Lightweight driver to access the BMP180 of the DriverFramework.
  *
- * @author Julian Oes <julian@oes.ch>
+ * @author Szilveszter Zsigmond <zsigmondszilveszter@yahoo.com>
  */
 
 #include <px4_config.h>
