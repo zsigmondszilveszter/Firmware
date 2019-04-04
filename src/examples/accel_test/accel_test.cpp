@@ -57,7 +57,7 @@ extern "C" __EXPORT int accel_test_main(int argc, char *argv[]);
 
 int accel_test_main(int argc, char *argv[])
 {
-    PX4_INFO("IMU TEST, Szilv!");
+    PX4_INFO("Accelorometer test from Szilveszter!");
 
     /* subscribe to sensor_combined topic */
 	int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_combined));

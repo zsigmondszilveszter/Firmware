@@ -57,7 +57,7 @@ extern "C" __EXPORT int gyro_test_main(int argc, char *argv[]);
 
 int gyro_test_main(int argc, char *argv[])
 {
-    PX4_INFO("IMU TEST, Szilv!");
+    PX4_INFO("Gyroscope test from Szilveszter!");
 
     /* subscribe to sensor_combined topic */
 	int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_combined));
@@ -104,7 +104,7 @@ int gyro_test_main(int argc, char *argv[])
 				struct sensor_combined_s raw;
 				/* copy sensors raw data into local buffer */
 				orb_copy(ORB_ID(sensor_combined), sensor_sub_fd, &raw);
-				PX4_INFO("Accelerometer:\t%8.4f\t%8.4f\t%8.4f",
+				PX4_INFO("Gyroscope:\t%8.4f\t%8.4f\t%8.4f",
 					 (double)raw.gyro_rad[0],
 					 (double)raw.gyro_rad[1],
 					 (double)raw.gyro_rad[2]);

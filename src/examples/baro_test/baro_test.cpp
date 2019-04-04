@@ -57,6 +57,8 @@ extern "C" __EXPORT int baro_test_main(int argc, char *argv[]);
 
 int baro_test_main(int argc, char *argv[])
 {
+    PX4_INFO("Barometer(air pressure sensor) test from Szilveszter!");
+
     /* subscribe to sensor_combined topic */
     int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_baro));
     /* limit the update rate to 5 Hz */
