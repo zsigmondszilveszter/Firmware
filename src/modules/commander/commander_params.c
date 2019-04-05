@@ -798,10 +798,22 @@ PARAM_DEFINE_INT32(NAV_DLL_ACT, 0);
 PARAM_DEFINE_INT32(NAV_RCL_ACT, 2);
 
 /**
- * Flag to enable obstacle avoidance
- * Temporary Parameter to enable interface testing
+ * Flag to enable obstacle avoidance.
  *
  * @boolean
  * @group Mission
  */
 PARAM_DEFINE_INT32(COM_OBS_AVOID, 0);
+
+/**
+ * Set avoidance system bootup timeout.
+ *
+ * The avoidance system running on the companion computer is expected to boot
+ * within this time and start providing trajectory points.
+ * If no avoidance system is detected a MAVLink warning message is sent.
+ * @group Commander
+ * @unit s
+ * @min 0
+ * @max 200
+ */
+PARAM_DEFINE_INT32(COM_OA_BOOT_T, 100);

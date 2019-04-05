@@ -94,30 +94,32 @@ private:
 
 	DEFINE_PARAMETERS(
 
-		(ParamInt<px4::params::NAV_DLL_ACT>) _datalink_loss_action,
-		(ParamInt<px4::params::COM_DL_LOSS_T>) _datalink_loss_threshold,
+		(ParamInt<px4::params::NAV_DLL_ACT>) _param_nav_dll_act,
+		(ParamInt<px4::params::COM_DL_LOSS_T>) _param_com_dl_loss_t,
 
-		(ParamInt<px4::params::COM_HLDL_LOSS_T>) _high_latency_datalink_loss_threshold,
-		(ParamInt<px4::params::COM_HLDL_REG_T>) _high_latency_datalink_regain_threshold,
+		(ParamInt<px4::params::COM_HLDL_LOSS_T>) _param_com_hldl_loss_t,
+		(ParamInt<px4::params::COM_HLDL_REG_T>) _param_com_hldl_reg_t,
 
-		(ParamInt<px4::params::NAV_RCL_ACT>) _rc_loss_action,
-		(ParamFloat<px4::params::COM_RC_LOSS_T>) _rc_loss_threshold,
+		(ParamInt<px4::params::NAV_RCL_ACT>) _param_nav_rcl_act,
+		(ParamFloat<px4::params::COM_RC_LOSS_T>) _param_com_rc_loss_t,
 
-		(ParamFloat<px4::params::COM_HOME_H_T>) _home_eph_threshold,
-		(ParamFloat<px4::params::COM_HOME_V_T>) _home_epv_threshold,
+		(ParamFloat<px4::params::COM_HOME_H_T>) _param_com_home_h_t,
+		(ParamFloat<px4::params::COM_HOME_V_T>) _param_com_home_v_t,
 
-		(ParamFloat<px4::params::COM_POS_FS_EPH>) _eph_threshold,
-		(ParamFloat<px4::params::COM_POS_FS_EPV>) _epv_threshold,
-		(ParamFloat<px4::params::COM_VEL_FS_EVH>) _evh_threshold,
+		(ParamFloat<px4::params::COM_POS_FS_EPH>) _param_com_pos_fs_eph,
+		(ParamFloat<px4::params::COM_POS_FS_EPV>) _param_com_pos_fs_epv,
+		(ParamFloat<px4::params::COM_VEL_FS_EVH>) _param_com_vel_fs_evh,
 
-		(ParamInt<px4::params::COM_POS_FS_DELAY>) _failsafe_pos_delay,
-		(ParamInt<px4::params::COM_POS_FS_PROB>) _failsafe_pos_probation,
-		(ParamInt<px4::params::COM_POS_FS_GAIN>) _failsafe_pos_gain,
+		(ParamInt<px4::params::COM_POS_FS_DELAY>) _param_com_pos_fs_delay,
+		(ParamInt<px4::params::COM_POS_FS_PROB>) _param_com_pos_fs_prob,
+		(ParamInt<px4::params::COM_POS_FS_GAIN>) _param_com_pos_fs_gain,
 
-		(ParamInt<px4::params::COM_LOW_BAT_ACT>) _low_bat_action,
-		(ParamFloat<px4::params::COM_DISARM_LAND>) _disarm_when_landed_timeout,
+		(ParamInt<px4::params::COM_LOW_BAT_ACT>) _param_com_low_bat_act,
+		(ParamFloat<px4::params::COM_DISARM_LAND>) _param_com_disarm_land,
 
-		(ParamInt<px4::params::COM_OBS_AVOID>) _obs_avoid
+		(ParamInt<px4::params::COM_OBS_AVOID>) _param_com_obs_avoid,
+		(ParamInt<px4::params::COM_OA_BOOT_T>) _param_com_oa_boot_t
+
 	)
 
 	const int64_t POSVEL_PROBATION_MIN = 1_s;	/**< minimum probation duration (usec) */
@@ -185,7 +187,6 @@ private:
 
 	hrt_abstime	_datalink_last_heartbeat_avoidance_system{0};
 	bool				_avoidance_system_lost{false};
-	hrt_abstime	_avoidance_system_not_started{0};
 
 	bool		_avoidance_system_status_change{false};
 	uint8_t	_datalink_last_status_avoidance_system{telemetry_status_s::MAV_STATE_UNINIT};
@@ -201,6 +202,8 @@ private:
 
 	systemlib::Hysteresis	_auto_disarm_landed{false};
 	systemlib::Hysteresis	_auto_disarm_killed{false};
+
+	bool _print_avoidance_msg_once{false};
 
 	// Subscriptions
 	Subscription<estimator_status_s>		_estimator_status_sub{ORB_ID(estimator_status)};

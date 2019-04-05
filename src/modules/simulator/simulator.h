@@ -363,8 +363,6 @@ private:
 
 	// uORB subscription handlers
 	int _actuator_outputs_sub{-1};
-	int _manual_sub{-1};
-	int _vehicle_attitude_sub{-1};
 	int _vehicle_status_sub{-1};
 
 	// hil map_ref data
@@ -385,10 +383,10 @@ private:
 	vehicle_status_s _vehicle_status {};
 
 	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::SIM_BAT_DRAIN>) _battery_drain_interval_s, ///< battery drain interval
-		(ParamInt<px4::params::MAV_TYPE>) _param_system_type,
-		(ParamInt<px4::params::MAV_SYS_ID>) _param_system_id,
-		(ParamInt<px4::params::MAV_COMP_ID>) _param_component_id
+		(ParamFloat<px4::params::SIM_BAT_DRAIN>) _param_sim_bat_drain, ///< battery drain interval
+		(ParamInt<px4::params::MAV_TYPE>) _param_mav_type,
+		(ParamInt<px4::params::MAV_SYS_ID>) _param_mav_sys_id,
+		(ParamInt<px4::params::MAV_COMP_ID>) _param_mav_comp_id
 	)
 
 #endif

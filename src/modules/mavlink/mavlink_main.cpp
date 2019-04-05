@@ -258,13 +258,13 @@ Mavlink::Mavlink() :
 	mavlink_update_parameters();
 
 	// save the current system- and component ID because we don't allow them to change during operation
-	int sys_id = _param_system_id.get();
+	int sys_id = _param_mav_sys_id.get();
 
 	if (sys_id > 0 && sys_id < 255) {
 		mavlink_system.sysid = sys_id;
 	}
 
-	int comp_id = _param_component_id.get();
+	int comp_id = _param_mav_comp_id.get();
 
 	if (comp_id > 0 && comp_id < 255) {
 		mavlink_system.compid = comp_id;
@@ -302,16 +302,16 @@ Mavlink::mavlink_update_parameters()
 {
 	updateParams();
 
-	int32_t proto = _param_mav_proto_version.get();
+	int32_t proto = _param_mav_proto_ver.get();
 
 	if (_protocol_version_switch != proto) {
 		_protocol_version_switch = proto;
 		set_proto_version(proto);
 	}
 
-	if (_param_system_type.get() < 0 || _param_system_type.get() >= MAV_TYPE_ENUM_END) {
-		_param_system_type.set(0);
-		_param_system_type.commit_no_notification();
+	if (_param_mav_type.get() < 0 || _param_mav_type.get() >= MAV_TYPE_ENUM_END) {
+		_param_mav_type.set(0);
+		_param_mav_type.commit_no_notification();
 		PX4_ERR("MAV_TYPE parameter invalid, resetting to 0.");
 	}
 }
@@ -941,7 +941,7 @@ Mavlink::find_broadcast_address()
 	struct ifconf ifconf;
 	int ret;
 
-#if defined(__APPLE__) && defined(__MACH__)
+#if defined(__APPLE__) && defined(__MACH__) || defined(__CYGWIN__)
 	// On Mac, we can't determine the required buffer
 	// size in advance, so we just use what tends to work.
 	ifconf.ifc_len = 1024;
@@ -1227,8 +1227,12 @@ Mavlink::send_autopilot_capabilites()
 		msg.middleware_sw_version = px4_firmware_version();
 		msg.os_sw_version = px4_os_version();
 		msg.board_version = px4_board_version();
-		uint64_t fw_git_version_binary = px4_firmware_version_binary();
+		/* use only first 5 bytes of git hash for firmware version */
+		const uint64_t fw_git_version_binary = px4_firmware_version_binary() & 0xFFFFFFFFFF000000;
+		const uint64_t fw_vendor_version = px4_firmware_vendor_version() >> 8;
+		constexpr size_t fw_vendor_version_length = 3;
 		memcpy(&msg.flight_custom_version, &fw_git_version_binary, sizeof(msg.flight_custom_version));
+		memcpy(&msg.flight_custom_version, &fw_vendor_version, fw_vendor_version_length);
 		memcpy(&msg.middleware_custom_version, &fw_git_version_binary, sizeof(msg.middleware_custom_version));
 		uint64_t os_git_version_binary = px4_os_version_binary();
 		memcpy(&msg.os_custom_version, &os_git_version_binary, sizeof(msg.os_custom_version));
@@ -2217,7 +2221,7 @@ Mavlink::task_main(int argc, char *argv[])
 
 #if defined(CONFIG_NET)
 
-			if (_param_broadcast_mode.get() != BROADCAST_MODE_MULTICAST) {
+			if (_param_mav_broadcast.get() != BROADCAST_MODE_MULTICAST) {
 				_src_addr_initialized = false;
 			}
 
@@ -2564,7 +2568,7 @@ void Mavlink::publish_telemetry_status()
 void Mavlink::check_radio_config()
 {
 	/* radio config check */
-	if (_uart_fd >= 0 && _param_radio_id.get() != 0
+	if (_uart_fd >= 0 && _param_mav_radio_id.get() != 0
 	    && _tstatus.type == telemetry_status_s::LINK_TYPE_3DR_RADIO) {
 		/* request to configure radio and radio is present */
 		FILE *fs = fdopen(_uart_fd, "w");
@@ -2575,9 +2579,9 @@ void Mavlink::check_radio_config()
 			fprintf(fs, "+++\n");
 			px4_usleep(1200000);
 
-			if (_param_radio_id.get() > 0) {
+			if (_param_mav_radio_id.get() > 0) {
 				/* set channel */
-				fprintf(fs, "ATS3=%u\n", _param_radio_id.get());
+				fprintf(fs, "ATS3=%u\n", _param_mav_radio_id.get());
 				px4_usleep(200000);
 
 			} else {
@@ -2608,8 +2612,8 @@ void Mavlink::check_radio_config()
 		}
 
 		/* reset param and save */
-		_param_radio_id.set(0);
-		_param_radio_id.commit_no_notification();
+		_param_mav_radio_id.set(0);
+		_param_mav_radio_id.commit_no_notification();
 	}
 }
 
