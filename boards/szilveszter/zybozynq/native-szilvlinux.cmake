@@ -41,6 +41,7 @@ px4_add_board(
 
 	DF_DRIVERS # NOTE: DriverFramework is migrating to intree PX4 drivers
 		lsm6ds33
+		lis3mdl
 		bmp180
 
 	MODULES
@@ -59,4 +60,5 @@ px4_add_board(
 		accel_test
 		gyro_test
 		baro_test
+		mag_test
 )
