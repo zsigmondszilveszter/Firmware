@@ -45,11 +45,22 @@ px4_add_board(
 		bmp180
 
 	MODULES
+		attitude_estimator_q
 		commander
 		dataman
 		ekf2
 		events
+		fw_att_control
+		fw_pos_control_l1
+		gnd_att_control
+		gnd_pos_control
+		land_detector
+		landing_target_estimator
+		load_mon
+		local_position_estimator
 		mavlink
+		mc_att_control
+		mc_pos_control
 		navigator
 		sensors
 
