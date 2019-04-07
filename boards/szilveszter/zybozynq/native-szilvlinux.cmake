@@ -54,7 +54,13 @@ px4_add_board(
 		sensors
 
 	SYSTEMCMDS
+		param
+		reboot
+		shutdown
+		top
 		topic_listener
+		tune_control
+		ver
 
 	EXAMPLES
 		accel_test
