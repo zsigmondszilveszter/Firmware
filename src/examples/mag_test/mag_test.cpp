@@ -50,7 +50,6 @@
 
 #include <uORB/uORB.h>
 #include <uORB/topics/sensor_mag.h>
-#include <uORB/topics/sensor_baro.h>
 #include <uORB/topics/vehicle_attitude.h>
 
 extern "C" __EXPORT int mag_test_main(int argc, char *argv[]);
@@ -61,8 +60,8 @@ int mag_test_main(int argc, char *argv[])
 
     /* subscribe to sensor_combined topic */
     int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_mag));
-    /* limit the update rate to 5 Hz */
-    orb_set_interval(sensor_sub_fd, 50);
+    /* limit the update rate to ? Hz */
+    orb_set_interval(sensor_sub_fd, 20);
 
 
     /* one could wait for multiple topics with this technique, just using one here */
@@ -75,7 +74,7 @@ int mag_test_main(int argc, char *argv[])
 
     int error_counter = 0;
 
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 50; i++) {
         /* wait for sensor update of 1 file descriptor for 1000 ms (1 second) */
         int poll_ret = px4_poll(fds, 1, 1000);
 

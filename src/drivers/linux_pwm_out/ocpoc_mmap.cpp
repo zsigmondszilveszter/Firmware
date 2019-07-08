@@ -42,8 +42,11 @@
 using namespace linux_pwm_out;
 
 #define RCOUT_ZYNQ_PWM_BASE	    0x43c00000
+// static const int TICK_PER_US   =  50;
+// static const int FREQUENCY_PWM = 400;
+// static const int TICK_PER_S  = 50000000;
 static const int TICK_PER_US   =  50;
-static const int FREQUENCY_PWM = 400;
+static const int FREQUENCY_PWM = 200;
 static const int TICK_PER_S  = 50000000;
 
 OcpocMmapPWMOut::OcpocMmapPWMOut(int max_num_outputs)
@@ -92,6 +95,7 @@ int OcpocMmapPWMOut::init()
 
 int OcpocMmapPWMOut::send_output_pwm(const uint16_t *pwm, int num_outputs)
 {
+	// PX4_INFO("%d\t%d\t%d\t%d", pwm[0], pwm[1], pwm[2], pwm[3]);
 	if (num_outputs > _num_outputs) {
 		num_outputs = _num_outputs;
 	}
@@ -100,9 +104,33 @@ int OcpocMmapPWMOut::send_output_pwm(const uint16_t *pwm, int num_outputs)
 	for (int i = 0; i < num_outputs; ++i) {
 		//n = ::asprintf(&data, "%u", pwm[i] * 1000);
 		//::write(_pwm_fd[i], data, n);
-		_shared_mem_cmd->periodhi[i].hi = TICK_PER_US * pwm[i];
+		// _shared_mem_cmd->periodhi[i].hi = TICK_PER_US * pwm[i];
+
+		// Szilveszter: change the mapping of the quad + airframe  
+		int index;
+		switch (i){
+			case 0: index = 3; break;
+			case 1: index = 1; break;
+			case 2: index = 0; break;
+			case 3: index = 2; break;
+			default: index = i; break;
+		}
+		_shared_mem_cmd->periodhi[index].hi = TICK_PER_US * pwm[i] * 2;
 		//printf("ch:%d, val:%d*%d ", ch, period_us, TICK_PER_US);
 	}
+
+	return 0;
+}
+
+int OcpocMmapPWMOut::send_test_output_pwm(const uint16_t pwm, int output_number)
+{
+	if(output_number < 0 || output_number > 3){
+		PX4_INFO("output number not correct");
+		return 1;
+	}
+
+	//convert this to duty_cycle in ns
+	_shared_mem_cmd->periodhi[output_number].hi = TICK_PER_US * pwm * 2;
 
 	return 0;
 }

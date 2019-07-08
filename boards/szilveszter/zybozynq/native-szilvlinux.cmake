@@ -1,24 +1,4 @@
-# Szilveszter Zsigmond 2019-15-19
-#
-#	Input:
-#		PLATFORM		: PX4 platform name (posix, nuttx, qurt)
-#		VENDOR			: name of board vendor/manufacturer/brand/etc
-#		MODEL			: name of board model
-#		LABEL			: optional label, set to default if not specified
-#		TOOLCHAIN		: cmake toolchain
-#		ARCHITECTURE		: name of the CPU CMake is building for (used by the toolchain)
-#		ROMFSROOT		: relative path to the ROMFS root directory (currently NuttX only)
-#		IO			: name of IO board to be built and included in the ROMFS (requires a valid ROMFSROOT)
-#		BOOTLOADER		: bootloader file to include for flashing via bl_update (currently NuttX only)
-#		UAVCAN_INTERFACES	: number of interfaces for UAVCAN
-#		DRIVERS			: list of drivers to build for this board (relative to src/drivers)
-#		MODULES			: list of modules to build for this board (relative to src/modules)
-#		SYSTEMCMDS		: list of system commands to build for this board (relative to src/systemcmds)
-#		EXAMPLES		: list of example modules to build for this board (relative to src/examples)
-#		SERIAL_PORTS		: mapping of user configurable serial ports and param facing name
-#		DF_DRIVERS		: list of DriverFramework device drivers (includes DriverFramework driver and wrapper)
-#		CONSTRAINED_FLASH	: flag to enable constrained flash options (eg limit init script status text)
-#		TESTING			: flag to enable automatic inclusion of PX4 testing modules
+# Szilveszter Zsigmond 2019-03-19
 
 
 add_definitions(
@@ -38,11 +18,14 @@ px4_add_board(
 
 	DRIVERS
 		linux_sbus
+		linux_pwm_out
 
 	DF_DRIVERS # NOTE: DriverFramework is migrating to intree PX4 drivers
 		lsm6ds33
 		lis3mdl
 		bmp180
+		mag3110
+		mpu9250
 
 	MODULES
 		attitude_estimator_q
@@ -65,7 +48,12 @@ px4_add_board(
 		sensors
 
 	SYSTEMCMDS
+		esc_calib
+		led_control
+		mixer
+		motor_ramp
 		param
+		perf
 		reboot
 		shutdown
 		top
@@ -78,4 +66,5 @@ px4_add_board(
 		gyro_test
 		baro_test
 		mag_test
+		szilveszter_logger
 )
